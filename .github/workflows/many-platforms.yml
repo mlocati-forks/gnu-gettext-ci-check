@@ -48,1192 +48,1211 @@ env:
   ftp_gnu_org: mirrors.ocf.berkeley.edu
 
 jobs:
+  # build-tarball:
+  #   runs-on: ubuntu-22.04
+  #   steps:
+  #     # This is needed because we run a script stored in this repository.
+  #     - uses: actions/checkout@v4
+  #     - run: uname -a
+  #     - run: id
+  #     - run: env | LC_ALL=C sort
+  #     - run: pwd
+  #     # Install Ubuntu packages.
+  #     # List of packages: https://packages.ubuntu.com/
+  #     - run: sudo apt update; sudo apt install gperf gobjc fp-compiler fp-units-fcl gettext groff texlive-base texlive-latex-base
+  #     - run: |
+  #         wget -O automake-1.18.tar.gz https://${{ env.ftp_gnu_org }}/gnu/automake/automake-1.18.tar.gz
+  #         tar xfz automake-1.18.tar.gz && cd automake-1.18 && patch -p0 < ../patches/automake-installcheck.diff && ./configure --prefix=/usr && make && sudo make install && cd ..
+  #         ./build-tarball.sh '${{ env.package }}'
+  #     # Doc: https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
+  #     - if: ${{ failure() }}
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: logs-build-tarball-failed
+  #         path: |
+  #           ${{ env.package }}/config.cache
+  #           ${{ env.package }}/config.log
+  #           ${{ env.package }}/config.status
+  #           ${{ env.package }}/log[1234]
+  #           ${{ env.package }}/gettext-runtime/tests/test-suite.log
+  #           ${{ env.package }}/libtextstyle/tests/test-suite.log
+  #           ${{ env.package }}/gettext-tools/tests/test-suite.log
+  #           ${{ env.package }}/gettext-tools/system-tests/test-suite.log
+  #           ${{ env.package }}/gettext-tools/gnulib-tests/test-suite.log
+  #         retention-days: 28
+  #         overwrite: true
+  #     # Doc: https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
+  #     #      https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
+  #     - uses: actions/upload-artifact@v4
+  #       with:
+  #         name: tarball
+  #         path: ${{ env.package }}/${{ env.package }}-*.tar.gz
+  #         if-no-files-found: error
+  #         retention-days: 28
+  #         compression-level: 0
+  #         overwrite: true
+
   build-tarball:
     runs-on: ubuntu-22.04
     steps:
       # This is needed because we run a script stored in this repository.
-      - uses: actions/checkout@v4
-      - run: uname -a
-      - run: id
-      - run: env | LC_ALL=C sort
-      - run: pwd
-      # Install Ubuntu packages.
-      # List of packages: https://packages.ubuntu.com/
-      - run: sudo apt update; sudo apt install gperf gobjc fp-compiler fp-units-fcl gettext groff texlive-base texlive-latex-base
       - run: |
-          wget -O automake-1.18.tar.gz https://${{ env.ftp_gnu_org }}/gnu/automake/automake-1.18.tar.gz
-          tar xfz automake-1.18.tar.gz && cd automake-1.18 && patch -p0 < ../patches/automake-installcheck.diff && ./configure --prefix=/usr && make && sudo make install && cd ..
-          ./build-tarball.sh '${{ env.package }}'
-      # Doc: https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
-      - if: ${{ failure() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: logs-build-tarball-failed
-          path: |
-            ${{ env.package }}/config.cache
-            ${{ env.package }}/config.log
-            ${{ env.package }}/config.status
-            ${{ env.package }}/log[1234]
-            ${{ env.package }}/gettext-runtime/tests/test-suite.log
-            ${{ env.package }}/libtextstyle/tests/test-suite.log
-            ${{ env.package }}/gettext-tools/tests/test-suite.log
-            ${{ env.package }}/gettext-tools/system-tests/test-suite.log
-            ${{ env.package }}/gettext-tools/gnulib-tests/test-suite.log
-          retention-days: 28
-          overwrite: true
+          wget -O gettext-1.0.tar.gz https://ftp.gnu.org/pub/gnu/gettext/gettext-1.0.tar.gz
       # Doc: https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
       #      https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
       - uses: actions/upload-artifact@v4
         with:
           name: tarball
-          path: ${{ env.package }}/${{ env.package }}-*.tar.gz
+          path: gettext-*.tar.gz
           if-no-files-found: error
-          retention-days: 28
+          retention-days: 1
           compression-level: 0
           overwrite: true
-  # We can run max. 20 "make check" jobs in parallel, max. 5 of them being on macOS.
-  # See https://docs.github.com/en/actions/learn-github-actions/usage-limits-billing-and-administration
-  check-linux-gnu-ubuntu:
-    name: make check on Ubuntu GNU/Linux
-    needs: build-tarball
-    runs-on: ubuntu-22.04
-    steps:
-      # This is needed because we run a script stored in this repository.
-      - uses: actions/checkout@v4
-      # Download the artifact to $GITHUB_WORKSPACE.
-      # Doc: https://github.com/actions/download-artifact?tab=readme-ov-file#usage
-      - uses: actions/download-artifact@v4
-        with:
-          name: tarball
-      - run: uname -a
-      - run: id
-      - run: env | LC_ALL=C sort
-      - run: pwd
-      # Install Ubuntu packages.
-      # List of packages: https://packages.ubuntu.com/
-      # - run: sudo apt update; sudo apt install ...
-      - run: |
-          pwd
-          export CPPFLAGS="-Wall"
-          ./build-on.sh '${{ env.package }}' '' 'make' "$HOME" '' 'sudo apt update; sudo apt install libjson-c-dev libcurl4-gnutls-dev g++ gobjc python3 clisp rep guile-3.0 gnu-smalltalk openjdk-11-jdk mono-mcs gm2 gdc fp-compiler fp-units-fcl ocaml opam tcl perl libintl-perl php golang-go ruby ruby-gettext lua5.4 gjs valac && sudo localedef -i ar_SA -f ISO-8859-6 ar_SA.ISO-8859-6 && sudo localedef -i de_DE -f ISO-8859-1 de_DE.ISO-8859-1 && sudo localedef -i de_DE -f UTF-8 de_DE.UTF-8 && sudo localedef -i es_ES -f UTF-8 es_ES.UTF-8 && sudo localedef -i fa_IR -f UTF-8 fa_IR && sudo localedef -i fr_FR -f ISO-8859-1 fr_FR.ISO-8859-1 && sudo localedef -i fr_FR -f UTF-8 fr_FR.UTF-8 && sudo localedef -i ja_JP -f EUC-JP ja_JP.EUC-JP && sudo localedef -i tr_TR -f UTF-8 tr_TR.UTF-8 && sudo localedef -i zh_CN -f GB18030 zh_CN.GB18030'
-      # Doc: https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
-      #      https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
-      - if: ${{ always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: logs-linux-gnu-ubuntu
-          path: |
-            ${{ env.package }}-*/build/config.cache
-            ${{ env.package }}-*/build/config.log
-            ${{ env.package }}-*/build/config.status
-            ${{ env.package }}-*/build/log[12345]
-            ${{ env.package }}-*/build/gettext-runtime/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/config.log
-            ${{ env.package }}-*/build/gettext-runtime/config.status
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.log
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.status
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.log
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.status
-            ${{ env.package }}-*/build/gettext-runtime/tests/test-suite.log
-            ${{ env.package }}-*/build/libtextstyle/config.cache
-            ${{ env.package }}-*/build/libtextstyle/config.log
-            ${{ env.package }}-*/build/libtextstyle/config.status
-            ${{ env.package }}-*/build/libtextstyle/tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/config.cache
-            ${{ env.package }}-*/build/gettext-tools/config.log
-            ${{ env.package }}-*/build/gettext-tools/config.status
-            ${{ env.package }}-*/build/gettext-tools/tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/system-tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/gnulib-tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/examples/config.cache
-            ${{ env.package }}-*/build/gettext-tools/examples/config.log
-            ${{ env.package }}-*/build/gettext-tools/examples/config.status
-            ${{ env.package }}-*/build-full/config.cache
-            ${{ env.package }}-*/build-full/config.log
-            ${{ env.package }}-*/build-full/config.status
-            ${{ env.package }}-*/build-full/log[12345]
-            ${{ env.package }}-*/build-full/gettext-runtime/config.cache
-            ${{ env.package }}-*/build-full/gettext-runtime/config.log
-            ${{ env.package }}-*/build-full/gettext-runtime/config.status
-            ${{ env.package }}-*/build-full/gettext-runtime/intl/config.cache
-            ${{ env.package }}-*/build-full/gettext-runtime/intl/config.log
-            ${{ env.package }}-*/build-full/gettext-runtime/intl/config.status
-            ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.cache
-            ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.log
-            ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.status
-            ${{ env.package }}-*/build-full/gettext-runtime/tests/test-suite.log
-            ${{ env.package }}-*/build-full/libtextstyle/config.cache
-            ${{ env.package }}-*/build-full/libtextstyle/config.log
-            ${{ env.package }}-*/build-full/libtextstyle/config.status
-            ${{ env.package }}-*/build-full/libtextstyle/tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/config.cache
-            ${{ env.package }}-*/build-full/gettext-tools/config.log
-            ${{ env.package }}-*/build-full/gettext-tools/config.status
-            ${{ env.package }}-*/build-full/gettext-tools/tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/system-tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/gnulib-tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/examples/config.cache
-            ${{ env.package }}-*/build-full/gettext-tools/examples/config.log
-            ${{ env.package }}-*/build-full/gettext-tools/examples/config.status
-          retention-days: 28
-          overwrite: true
-  check-linux-gnu-centos:
-    name: make check on CentOS GNU/Linux
-    needs: build-tarball
-    runs-on: ubuntu-22.04
-    steps:
-      # This is needed because we run a script stored in this repository.
-      - uses: actions/checkout@v4
-      # Download the artifact to $GITHUB_WORKSPACE.
-      # Doc: https://github.com/actions/download-artifact?tab=readme-ov-file#usage
-      - uses: actions/download-artifact@v4
-        with:
-          name: tarball
-      - uses: maus007/docker-run-action-fork@v1
-        with:
-          image: centos:7
-          options: -v ${{ github.workspace }}:/work
-          run: |
-            uname -a
-            id
-            env | LC_ALL=C sort
-            pwd
-            : "The CentOS packages repository has moved on 2024-07-01."
-            sed -i -e 's|^mirrorlist=|#mirrorlist=|' -e 's|^#baseurl=http://mirror\.centos\.org|baseurl=http://vault.centos.org|' /etc/yum.repos.d/CentOS-Base.repo
-            : "Install CentOS Linux packages"
-            : "List of packages: http://vault.centos.org/centos/7/os/x86_64/Packages/"
-            yum -y install wget make gcc gcc-c++
-            cd /work
-            ls -l
-            export CPPFLAGS="-Wall"
-            wget -O make-4.2.1.tar.gz https://${{ env.ftp_gnu_org }}/gnu/make/make-4.2.1.tar.gz
-            ./build-on.sh '${{ env.package }}' '' 'make' '/usr/local' 'make-4.2.1' 'yum -y install epel-release && yum -y install json-c-devel libcurl-devel gcc-c++ gcc-objc python3 guile gnu-smalltalk java-11-openjdk-devel mono-devel tcl perl perl-libintl php gcc-go ruby ruby-gettext lua gjs vala glibc-common && localedef -i ar_SA -f ISO-8859-6 ar_SA.ISO-8859-6 && localedef -i de_DE -f ISO-8859-1 de_DE.ISO-8859-1 && localedef -i de_DE -f UTF-8 de_DE.UTF-8 && localedef -i es_ES -f UTF-8 es_ES.UTF-8 && localedef -i fa_IR -f UTF-8 fa_IR && localedef -i fr_FR -f ISO-8859-1 fr_FR.ISO-8859-1 && localedef -i fr_FR -f UTF-8 fr_FR.UTF-8 && localedef -i ja_JP -f EUC-JP ja_JP.EUC-JP && localedef -i tr_TR -f UTF-8 tr_TR.UTF-8 && localedef -i zh_CN -f GB18030 zh_CN.GB18030'
-      # Doc: https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
-      #      https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
-      - if: ${{ always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: logs-linux-gnu-centos
-          path: |
-            ${{ env.package }}-*/build/config.cache
-            ${{ env.package }}-*/build/config.log
-            ${{ env.package }}-*/build/config.status
-            ${{ env.package }}-*/build/log[12345]
-            ${{ env.package }}-*/build/gettext-runtime/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/config.log
-            ${{ env.package }}-*/build/gettext-runtime/config.status
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.log
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.status
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.log
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.status
-            ${{ env.package }}-*/build/gettext-runtime/tests/test-suite.log
-            ${{ env.package }}-*/build/libtextstyle/config.cache
-            ${{ env.package }}-*/build/libtextstyle/config.log
-            ${{ env.package }}-*/build/libtextstyle/config.status
-            ${{ env.package }}-*/build/libtextstyle/tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/config.cache
-            ${{ env.package }}-*/build/gettext-tools/config.log
-            ${{ env.package }}-*/build/gettext-tools/config.status
-            ${{ env.package }}-*/build/gettext-tools/tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/system-tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/gnulib-tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/examples/config.cache
-            ${{ env.package }}-*/build/gettext-tools/examples/config.log
-            ${{ env.package }}-*/build/gettext-tools/examples/config.status
-            ${{ env.package }}-*/build-full/config.cache
-            ${{ env.package }}-*/build-full/config.log
-            ${{ env.package }}-*/build-full/config.status
-            ${{ env.package }}-*/build-full/log[12345]
-            ${{ env.package }}-*/build-full/gettext-runtime/config.cache
-            ${{ env.package }}-*/build-full/gettext-runtime/config.log
-            ${{ env.package }}-*/build-full/gettext-runtime/config.status
-            ${{ env.package }}-*/build-full/gettext-runtime/intl/config.cache
-            ${{ env.package }}-*/build-full/gettext-runtime/intl/config.log
-            ${{ env.package }}-*/build-full/gettext-runtime/intl/config.status
-            ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.cache
-            ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.log
-            ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.status
-            ${{ env.package }}-*/build-full/gettext-runtime/tests/test-suite.log
-            ${{ env.package }}-*/build-full/libtextstyle/config.cache
-            ${{ env.package }}-*/build-full/libtextstyle/config.log
-            ${{ env.package }}-*/build-full/libtextstyle/config.status
-            ${{ env.package }}-*/build-full/libtextstyle/tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/config.cache
-            ${{ env.package }}-*/build-full/gettext-tools/config.log
-            ${{ env.package }}-*/build-full/gettext-tools/config.status
-            ${{ env.package }}-*/build-full/gettext-tools/tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/system-tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/gnulib-tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/examples/config.cache
-            ${{ env.package }}-*/build-full/gettext-tools/examples/config.log
-            ${{ env.package }}-*/build-full/gettext-tools/examples/config.status
-          retention-days: 28
-          overwrite: true
-  check-linux-gnu-alma:
-    name: make check on AlmaLinux GNU/Linux
-    needs: build-tarball
-    runs-on: ubuntu-22.04
-    steps:
-      # This is needed because we run a script stored in this repository.
-      - uses: actions/checkout@v4
-      # Download the artifact to $GITHUB_WORKSPACE.
-      # Doc: https://github.com/actions/download-artifact?tab=readme-ov-file#usage
-      - uses: actions/download-artifact@v4
-        with:
-          name: tarball
-      - uses: maus007/docker-run-action-fork@v1
-        with:
-          image: almalinux:9
-          options: -v ${{ github.workspace }}:/work
-          run: |
-            uname -a
-            id
-            env | LC_ALL=C sort
-            pwd
-            : "Install AlmaLinux packages"
-            : "List of packages: https://repo.almalinux.org/almalinux/9/BaseOS/x86_64/os/Packages/"
-            : "                  https://repo.almalinux.org/almalinux/9/AppStream/x86_64/os/Packages/"
-            : "                  https://repo.almalinux.org/almalinux/9/CRB/x86_64/os/Packages/"
-            : "                  https://repo.almalinux.org/almalinux/9/devel/x86_64/os/Packages/"
-            : "Explanation: https://wiki.almalinux.org/repos/AlmaLinux.html"
-            yum -y install glibc-gconv-extra make gcc gcc-c++ diffutils
-            cd /work
-            ls -l
-            export CPPFLAGS="-Wall"
-            ./build-on.sh '${{ env.package }}' '' 'make' '/usr/local' '' 'yum -y install epel-release && crb enable && yum -y install json-c-devel libcurl-devel gcc-c++ gcc-objc python3 guile30 java-11-openjdk-devel mono-devel gcc-gdc fpc tcl perl perl-libintl php golang ruby lua gjs autoconf automake glibc-locale-source && ln -s guile3.0 /usr/bin/guile && localedef -i ar_SA -f ISO-8859-6 ar_SA.ISO-8859-6 && localedef -i de_DE -f ISO-8859-1 de_DE.ISO-8859-1 && localedef -i de_DE -f UTF-8 de_DE.UTF-8 && localedef -i es_ES -f UTF-8 es_ES.UTF-8 && localedef -i fa_IR -f UTF-8 fa_IR && localedef -i fr_FR -f ISO-8859-1 fr_FR.ISO-8859-1 && localedef -i fr_FR -f UTF-8 fr_FR.UTF-8 && localedef -i ja_JP -f EUC-JP ja_JP.EUC-JP && localedef -i tr_TR -f UTF-8 tr_TR.UTF-8 && localedef -i zh_CN -f GB18030 zh_CN.GB18030'
-      # Doc: https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
-      #      https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
-      - if: ${{ always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: logs-linux-gnu-alma
-          path: |
-            ${{ env.package }}-*/build/config.cache
-            ${{ env.package }}-*/build/config.log
-            ${{ env.package }}-*/build/config.status
-            ${{ env.package }}-*/build/log[12345]
-            ${{ env.package }}-*/build/gettext-runtime/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/config.log
-            ${{ env.package }}-*/build/gettext-runtime/config.status
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.log
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.status
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.log
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.status
-            ${{ env.package }}-*/build/gettext-runtime/tests/test-suite.log
-            ${{ env.package }}-*/build/libtextstyle/config.cache
-            ${{ env.package }}-*/build/libtextstyle/config.log
-            ${{ env.package }}-*/build/libtextstyle/config.status
-            ${{ env.package }}-*/build/libtextstyle/tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/config.cache
-            ${{ env.package }}-*/build/gettext-tools/config.log
-            ${{ env.package }}-*/build/gettext-tools/config.status
-            ${{ env.package }}-*/build/gettext-tools/tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/system-tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/gnulib-tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/examples/config.cache
-            ${{ env.package }}-*/build/gettext-tools/examples/config.log
-            ${{ env.package }}-*/build/gettext-tools/examples/config.status
-            ${{ env.package }}-*/build-full/config.cache
-            ${{ env.package }}-*/build-full/config.log
-            ${{ env.package }}-*/build-full/config.status
-            ${{ env.package }}-*/build-full/log[12345]
-            ${{ env.package }}-*/build-full/gettext-runtime/config.cache
-            ${{ env.package }}-*/build-full/gettext-runtime/config.log
-            ${{ env.package }}-*/build-full/gettext-runtime/config.status
-            ${{ env.package }}-*/build-full/gettext-runtime/intl/config.cache
-            ${{ env.package }}-*/build-full/gettext-runtime/intl/config.log
-            ${{ env.package }}-*/build-full/gettext-runtime/intl/config.status
-            ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.cache
-            ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.log
-            ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.status
-            ${{ env.package }}-*/build-full/gettext-runtime/tests/test-suite.log
-            ${{ env.package }}-*/build-full/libtextstyle/config.cache
-            ${{ env.package }}-*/build-full/libtextstyle/config.log
-            ${{ env.package }}-*/build-full/libtextstyle/config.status
-            ${{ env.package }}-*/build-full/libtextstyle/tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/config.cache
-            ${{ env.package }}-*/build-full/gettext-tools/config.log
-            ${{ env.package }}-*/build-full/gettext-tools/config.status
-            ${{ env.package }}-*/build-full/gettext-tools/tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/system-tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/gnulib-tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/examples/config.cache
-            ${{ env.package }}-*/build-full/gettext-tools/examples/config.log
-            ${{ env.package }}-*/build-full/gettext-tools/examples/config.status
-          retention-days: 28
-          overwrite: true
-  check-linux-alpine:
-    name: make check on Alpine Linux
-    needs: build-tarball
-    runs-on: ubuntu-22.04
-    steps:
-      # This is needed because we run a script stored in this repository.
-      - uses: actions/checkout@v4
-      # Download the artifact to $GITHUB_WORKSPACE.
-      # Doc: https://github.com/actions/download-artifact?tab=readme-ov-file#usage
-      - uses: actions/download-artifact@v4
-        with:
-          name: tarball
-      - uses: maus007/docker-run-action-fork@v1
-        with:
-          image: alpine:3
-          options: -v ${{ github.workspace }}:/work
-          run: |
-            uname -a
-            id
-            env | LC_ALL=C sort
-            pwd
-            : "Install Alpine Linux packages"
-            : "List of packages: https://pkgs.alpinelinux.org/packages"
-            apk add make gcc musl-dev linux-headers g++ gnu-libiconv-dev
-            cd /work
-            ls -l
-            export CPPFLAGS="-I/usr/include/gnu-libiconv -Wall"
-            ./build-on.sh '${{ env.package }}' '' 'make' '/usr/local' '' 'apk add json-c-dev curl-dev g++ gcc-objc python3 clisp guile openjdk17 mono gcc-gdc gawk fpc ocaml opam tcl perl perl-libintl-perl php83 gcc-go ruby gjs vala musl-locales autoconf automake --repository=https://dl-cdn.alpinelinux.org/alpine/edge/testing'
-      # Doc: https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
-      #      https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
-      - if: ${{ always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: logs-linux-alpine
-          path: |
-            ${{ env.package }}-*/build/config.cache
-            ${{ env.package }}-*/build/config.log
-            ${{ env.package }}-*/build/config.status
-            ${{ env.package }}-*/build/log[12345]
-            ${{ env.package }}-*/build/gettext-runtime/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/config.log
-            ${{ env.package }}-*/build/gettext-runtime/config.status
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.log
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.status
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.log
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.status
-            ${{ env.package }}-*/build/gettext-runtime/tests/test-suite.log
-            ${{ env.package }}-*/build/libtextstyle/config.cache
-            ${{ env.package }}-*/build/libtextstyle/config.log
-            ${{ env.package }}-*/build/libtextstyle/config.status
-            ${{ env.package }}-*/build/libtextstyle/tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/config.cache
-            ${{ env.package }}-*/build/gettext-tools/config.log
-            ${{ env.package }}-*/build/gettext-tools/config.status
-            ${{ env.package }}-*/build/gettext-tools/tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/system-tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/gnulib-tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/examples/config.cache
-            ${{ env.package }}-*/build/gettext-tools/examples/config.log
-            ${{ env.package }}-*/build/gettext-tools/examples/config.status
-            ${{ env.package }}-*/build-full/config.cache
-            ${{ env.package }}-*/build-full/config.log
-            ${{ env.package }}-*/build-full/config.status
-            ${{ env.package }}-*/build-full/log[12345]
-            ${{ env.package }}-*/build-full/gettext-runtime/config.cache
-            ${{ env.package }}-*/build-full/gettext-runtime/config.log
-            ${{ env.package }}-*/build-full/gettext-runtime/config.status
-            ${{ env.package }}-*/build-full/gettext-runtime/intl/config.cache
-            ${{ env.package }}-*/build-full/gettext-runtime/intl/config.log
-            ${{ env.package }}-*/build-full/gettext-runtime/intl/config.status
-            ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.cache
-            ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.log
-            ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.status
-            ${{ env.package }}-*/build-full/gettext-runtime/tests/test-suite.log
-            ${{ env.package }}-*/build-full/libtextstyle/config.cache
-            ${{ env.package }}-*/build-full/libtextstyle/config.log
-            ${{ env.package }}-*/build-full/libtextstyle/config.status
-            ${{ env.package }}-*/build-full/libtextstyle/tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/config.cache
-            ${{ env.package }}-*/build-full/gettext-tools/config.log
-            ${{ env.package }}-*/build-full/gettext-tools/config.status
-            ${{ env.package }}-*/build-full/gettext-tools/tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/system-tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/gnulib-tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/examples/config.cache
-            ${{ env.package }}-*/build-full/gettext-tools/examples/config.log
-            ${{ env.package }}-*/build-full/gettext-tools/examples/config.status
-          retention-days: 28
-          overwrite: true
-  check-macos:
-    name: make check on macOS
-    needs: build-tarball
-    # Doc: https://docs.github.com/en/actions/using-jobs/using-a-matrix-for-your-jobs
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-14, macos-15, macos-26]
-        # The unit test lang-c++20 fails on macOS 14, due to broken C++ header files.
-        exclude:
-          - os: macos-14
-    runs-on: ${{ matrix.os }}
-    steps:
-      # This is needed because we run a script stored in this repository.
-      - uses: actions/checkout@v4
-      # Download the artifact to $GITHUB_WORKSPACE.
-      # Doc: https://github.com/actions/download-artifact?tab=readme-ov-file#usage
-      - uses: actions/download-artifact@v4
-        with:
-          name: tarball
-      - run: uname -a
-      - run: id
-      - run: env | LC_ALL=C sort
-      - run: pwd
-      # Install Homebrew packages.
-      # List of packages: https://formulae.brew.sh/
-      - run: ${{ 'brew install libiconv' }}
-      - run: |
-          pwd
-          export CPPFLAGS="-I$HOME/include -I${HOMEBREW_PREFIX-/usr/local}/opt/libiconv/include -I${HOMEBREW_PREFIX-/usr/local}/opt/json-c/include -Wall"
-          export LDFLAGS="-L$HOME/lib -L${HOMEBREW_PREFIX-/usr/local}/opt/libiconv/lib -L${HOMEBREW_PREFIX-/usr/local}/opt/json-c/lib"
-          : "Don't try 'ldc' on this platform, because it is broken on macOS 15:"
-          : Segmentation fault: 11  ldc2 -g -O "-I../../../gettext-runtime/intl-d" "-c" "../../../gettext-runtime/intl-d/gnu/libintl/package.d"
-          ./build-on.sh '${{ env.package }}' '' 'make' "$HOME" '' 'brew install svn && brew install json-c curl python clisp guile gnu-smalltalk openjdk mono gawk fpc ocaml opam tcl-tk perl php go ruby lua gjs vala automake'
-      # Doc: https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
-      #      https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
-      - if: ${{ always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: logs-${{ matrix.os }}
-          path: |
-            ${{ env.package }}-*/build/config.cache
-            ${{ env.package }}-*/build/config.log
-            ${{ env.package }}-*/build/config.status
-            ${{ env.package }}-*/build/log[12345]
-            ${{ env.package }}-*/build/gettext-runtime/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/config.log
-            ${{ env.package }}-*/build/gettext-runtime/config.status
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.log
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.status
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.log
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.status
-            ${{ env.package }}-*/build/gettext-runtime/tests/test-suite.log
-            ${{ env.package }}-*/build/libtextstyle/config.cache
-            ${{ env.package }}-*/build/libtextstyle/config.log
-            ${{ env.package }}-*/build/libtextstyle/config.status
-            ${{ env.package }}-*/build/libtextstyle/tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/config.cache
-            ${{ env.package }}-*/build/gettext-tools/config.log
-            ${{ env.package }}-*/build/gettext-tools/config.status
-            ${{ env.package }}-*/build/gettext-tools/tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/system-tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/gnulib-tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/examples/config.cache
-            ${{ env.package }}-*/build/gettext-tools/examples/config.log
-            ${{ env.package }}-*/build/gettext-tools/examples/config.status
-            ${{ env.package }}-*/build-full/config.cache
-            ${{ env.package }}-*/build-full/config.log
-            ${{ env.package }}-*/build-full/config.status
-            ${{ env.package }}-*/build-full/log[12345]
-            ${{ env.package }}-*/build-full/gettext-runtime/config.cache
-            ${{ env.package }}-*/build-full/gettext-runtime/config.log
-            ${{ env.package }}-*/build-full/gettext-runtime/config.status
-            ${{ env.package }}-*/build-full/gettext-runtime/intl/config.cache
-            ${{ env.package }}-*/build-full/gettext-runtime/intl/config.log
-            ${{ env.package }}-*/build-full/gettext-runtime/intl/config.status
-            ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.cache
-            ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.log
-            ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.status
-            ${{ env.package }}-*/build-full/gettext-runtime/tests/test-suite.log
-            ${{ env.package }}-*/build-full/libtextstyle/config.cache
-            ${{ env.package }}-*/build-full/libtextstyle/config.log
-            ${{ env.package }}-*/build-full/libtextstyle/config.status
-            ${{ env.package }}-*/build-full/libtextstyle/tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/config.cache
-            ${{ env.package }}-*/build-full/gettext-tools/config.log
-            ${{ env.package }}-*/build-full/gettext-tools/config.status
-            ${{ env.package }}-*/build-full/gettext-tools/tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/system-tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/gnulib-tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/examples/config.cache
-            ${{ env.package }}-*/build-full/gettext-tools/examples/config.log
-            ${{ env.package }}-*/build-full/gettext-tools/examples/config.status
-          retention-days: 28
-          overwrite: true
-  check-freebsd:
-    name: make check on FreeBSD
-    needs: build-tarball
-    # The FreeBSD runners sometimes get stuck.
-    timeout-minutes: 15
-    runs-on: ubuntu-22.04
-    steps:
-      # This is needed because we run a script stored in this repository.
-      - uses: actions/checkout@v4
-      # Download the artifact to $GITHUB_WORKSPACE.
-      # Doc: https://github.com/actions/download-artifact?tab=readme-ov-file#usage
-      - uses: actions/download-artifact@v4
-        with:
-          name: tarball
-      # Doc: https://github.com/vmactions/freebsd-vm
-      - uses: vmactions/freebsd-vm@v1
-        with:
-          release: '14.0'
-          mem: 1024
-          usesh: true
-          run: |
-            set -x
-            uname -a
-            id
-            env | LC_ALL=C sort
-            pwd
-            : "Install FreeBSD packages"
-            : "List of packages: https://ports.freebsd.org/cgi/ports.cgi"
-            : pkg install -y ...
-            : "Do only one build, not 'build' and 'build-full', here, because"
-            : "with two builds, this step often takes more than 14 min 45 sec"
-            : "and it then hangs."
-            pkg install -y json-c curl python311 clisp librep guile3 mono ldc gawk ocaml ocaml-opam tcl86 p5-Locale-libintl php83 go122 ruby lua54 gjs autoconf automake && ln -s python3.11 /usr/local/bin/python3 && ln -s guile-3.0 /usr/local/bin/guile && ln -s tclsh8.6 /usr/local/bin/tclsh && ln -s lua54 /usr/local/bin/lua
-            ls -l
-            export CPPFLAGS="-I/usr/local/include -Wall"
-            export LDFLAGS="-L/usr/local/lib"
-            ./build-on.sh '${{ env.package }}' '--with-included-libunistring' 'make' '/usr/local' '' ''
-      # Doc: https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
-      #      https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
-      - if: ${{ always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: logs-freebsd
-          path: |
-            ${{ env.package }}-*/build/config.cache
-            ${{ env.package }}-*/build/config.log
-            ${{ env.package }}-*/build/config.status
-            ${{ env.package }}-*/build/log[12345]
-            ${{ env.package }}-*/build/gettext-runtime/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/config.log
-            ${{ env.package }}-*/build/gettext-runtime/config.status
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.log
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.status
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.log
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.status
-            ${{ env.package }}-*/build/gettext-runtime/tests/test-suite.log
-            ${{ env.package }}-*/build/libtextstyle/config.cache
-            ${{ env.package }}-*/build/libtextstyle/config.log
-            ${{ env.package }}-*/build/libtextstyle/config.status
-            ${{ env.package }}-*/build/libtextstyle/tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/config.cache
-            ${{ env.package }}-*/build/gettext-tools/config.log
-            ${{ env.package }}-*/build/gettext-tools/config.status
-            ${{ env.package }}-*/build/gettext-tools/tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/system-tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/gnulib-tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/examples/config.cache
-            ${{ env.package }}-*/build/gettext-tools/examples/config.log
-            ${{ env.package }}-*/build/gettext-tools/examples/config.status
-            ${{ env.package }}-*/build-full/config.cache
-            ${{ env.package }}-*/build-full/config.log
-            ${{ env.package }}-*/build-full/config.status
-            ${{ env.package }}-*/build-full/log[12345]
-            ${{ env.package }}-*/build-full/gettext-runtime/config.cache
-            ${{ env.package }}-*/build-full/gettext-runtime/config.log
-            ${{ env.package }}-*/build-full/gettext-runtime/config.status
-            ${{ env.package }}-*/build-full/gettext-runtime/intl/config.cache
-            ${{ env.package }}-*/build-full/gettext-runtime/intl/config.log
-            ${{ env.package }}-*/build-full/gettext-runtime/intl/config.status
-            ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.cache
-            ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.log
-            ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.status
-            ${{ env.package }}-*/build-full/gettext-runtime/tests/test-suite.log
-            ${{ env.package }}-*/build-full/libtextstyle/config.cache
-            ${{ env.package }}-*/build-full/libtextstyle/config.log
-            ${{ env.package }}-*/build-full/libtextstyle/config.status
-            ${{ env.package }}-*/build-full/libtextstyle/tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/config.cache
-            ${{ env.package }}-*/build-full/gettext-tools/config.log
-            ${{ env.package }}-*/build-full/gettext-tools/config.status
-            ${{ env.package }}-*/build-full/gettext-tools/tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/system-tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/gnulib-tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/examples/config.cache
-            ${{ env.package }}-*/build-full/gettext-tools/examples/config.log
-            ${{ env.package }}-*/build-full/gettext-tools/examples/config.status
-          retention-days: 28
-          overwrite: true
-  check-netbsd:
-    name: make check on NetBSD
-    needs: build-tarball
-    runs-on: ubuntu-22.04
-    steps:
-      # This is needed because we run a script stored in this repository.
-      - uses: actions/checkout@v4
-      # Download the artifact to $GITHUB_WORKSPACE.
-      # Doc: https://github.com/actions/download-artifact?tab=readme-ov-file#usage
-      - uses: actions/download-artifact@v4
-        with:
-          name: tarball
-      # Doc: https://github.com/vmactions/netbsd-vm
-      - uses: vmactions/netbsd-vm@v1
-        with:
-          release: '10.0'
-          mem: 1024
-          usesh: true
-          run: |
-            set -x
-            uname -a
-            id
-            env | LC_ALL=C sort
-            pwd
-            : "Install NetBSD packages"
-            : "List of packages: https://ftp.netbsd.org/pub/pkgsrc/current/pkgsrc/index-all.html"
-            : /usr/sbin/pkg_add ...
-            : "or"
-            : /usr/sbin/pkg_add pkgin
-            : pkgin install ...
-            ls -l
-            export CPPFLAGS="-I/usr/pkg/include -Wall"
-            export LDFLAGS="-L/usr/pkg/lib"
-            ./build-on.sh '${{ env.package }}' '' 'make' '/usr/pkg' '' '/usr/sbin/pkg_add json-c; /usr/sbin/pkg_add curl; /usr/sbin/pkg_add python312; /usr/sbin/pkg_add clisp; /usr/sbin/pkg_add librep; /usr/sbin/pkg_add guile30; /usr/sbin/pkg_add openjdk21; /usr/sbin/pkg_add mono; /usr/sbin/pkg_add gawk; /usr/sbin/pkg_add ocaml ocaml-opam; /usr/sbin/pkg_add tcl; /usr/sbin/pkg_add p5-Locale-libintl; /usr/sbin/pkg_add php; /usr/sbin/pkg_add go; /usr/sbin/pkg_add ruby ruby32-gettext; /usr/sbin/pkg_add lua54; /usr/sbin/pkg_add vala; /usr/sbin/pkg_add autoconf automake; ln -s python3.12 /usr/pkg/bin/python3 && ln -s ../guile/3.0/bin/guile /usr/pkg/bin/guile && ln -s ../java/openjdk21/bin/java /usr/pkg/bin/java && ln -s ../java/openjdk21/bin/javac /usr/pkg/bin/javac && ln -s ../java/openjdk21/bin/jar /usr/pkg/bin/jar'
-      # Doc: https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
-      #      https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
-      - if: ${{ always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: logs-netbsd
-          path: |
-            ${{ env.package }}-*/build/config.cache
-            ${{ env.package }}-*/build/config.log
-            ${{ env.package }}-*/build/config.status
-            ${{ env.package }}-*/build/log[12345]
-            ${{ env.package }}-*/build/gettext-runtime/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/config.log
-            ${{ env.package }}-*/build/gettext-runtime/config.status
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.log
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.status
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.log
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.status
-            ${{ env.package }}-*/build/gettext-runtime/tests/test-suite.log
-            ${{ env.package }}-*/build/libtextstyle/config.cache
-            ${{ env.package }}-*/build/libtextstyle/config.log
-            ${{ env.package }}-*/build/libtextstyle/config.status
-            ${{ env.package }}-*/build/libtextstyle/tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/config.cache
-            ${{ env.package }}-*/build/gettext-tools/config.log
-            ${{ env.package }}-*/build/gettext-tools/config.status
-            ${{ env.package }}-*/build/gettext-tools/tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/system-tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/gnulib-tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/examples/config.cache
-            ${{ env.package }}-*/build/gettext-tools/examples/config.log
-            ${{ env.package }}-*/build/gettext-tools/examples/config.status
-            ${{ env.package }}-*/build-full/config.cache
-            ${{ env.package }}-*/build-full/config.log
-            ${{ env.package }}-*/build-full/config.status
-            ${{ env.package }}-*/build-full/log[12345]
-            ${{ env.package }}-*/build-full/gettext-runtime/config.cache
-            ${{ env.package }}-*/build-full/gettext-runtime/config.log
-            ${{ env.package }}-*/build-full/gettext-runtime/config.status
-            ${{ env.package }}-*/build-full/gettext-runtime/intl/config.cache
-            ${{ env.package }}-*/build-full/gettext-runtime/intl/config.log
-            ${{ env.package }}-*/build-full/gettext-runtime/intl/config.status
-            ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.cache
-            ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.log
-            ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.status
-            ${{ env.package }}-*/build-full/gettext-runtime/tests/test-suite.log
-            ${{ env.package }}-*/build-full/libtextstyle/config.cache
-            ${{ env.package }}-*/build-full/libtextstyle/config.log
-            ${{ env.package }}-*/build-full/libtextstyle/config.status
-            ${{ env.package }}-*/build-full/libtextstyle/tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/config.cache
-            ${{ env.package }}-*/build-full/gettext-tools/config.log
-            ${{ env.package }}-*/build-full/gettext-tools/config.status
-            ${{ env.package }}-*/build-full/gettext-tools/tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/system-tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/gnulib-tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/examples/config.cache
-            ${{ env.package }}-*/build-full/gettext-tools/examples/config.log
-            ${{ env.package }}-*/build-full/gettext-tools/examples/config.status
-          retention-days: 28
-          overwrite: true
-  check-openbsd:
-    name: make check on OpenBSD
-    needs: build-tarball
-    runs-on: ubuntu-22.04
-    steps:
-      # This is needed because we run a script stored in this repository.
-      - uses: actions/checkout@v4
-      # Download the artifact to $GITHUB_WORKSPACE.
-      # Doc: https://github.com/actions/download-artifact?tab=readme-ov-file#usage
-      - uses: actions/download-artifact@v4
-        with:
-          name: tarball
-      # Doc: https://github.com/vmactions/openbsd-vm
-      - uses: vmactions/openbsd-vm@v1
-        with:
-          release: '7.7'
-          mem: 1024
-          usesh: true
-          # Avoid 'sync: sshfs' since it causes trouble with file timestamps
-          # and errors from chown() calls:
-          # - BSD tar error messages for r--r--r-- files: "tar: Unable to create ...: Permission denied"
-          # - GNU tar warnings "Cannot change ownership to uid 0, gid 0: Permission denied"
-          #sync: sshfs
-          run: |
-            set -x
-            uname -a
-            id
-            env | LC_ALL=C sort
-            pwd
-            : "Install OpenBSD packages"
-            : "List of packages: https://cdn.openbsd.org/pub/OpenBSD/7.7/packages/amd64/"
-            pkg_add gmake g++
-            export PATH=/usr/local/bin:$PATH
-            : "The OpenBSD port of autoconf needs this. See <https://marc.info/?l=openbsd-misc&m=115868167816272&w=2>."
-            export AUTOCONF_VERSION=2.72
-            : "The OpenBSD port of automake needs this, if more than one version is installed."
-            export AUTOMAKE_VERSION=1.16
-            ls -l
-            export CPPFLAGS="-I/usr/local/include -Wall"
-            export LDFLAGS="-L/usr/local/lib"
-            ./build-on.sh '${{ env.package }}' '' 'gmake' '/usr/local' '' 'pkg_add json-c curl gobjc-11.2.0p14 python3 clisp librep guile3 dmd gawk ocaml opam tcl-8.6.13 php-8.3.11p1 go-1.23.1 ruby-3.3.5 ruby33-gettext lua-5.4.7 vala autoconf-2.72p0 automake-1.16.5 && ln -s guile3.0 /usr/local/bin/guile && ln -s tclsh8.6 /usr/local/bin/tclsh && ln -s php-8.3 /usr/local/bin/php && ln -s lua54 /usr/local/bin/lua'
-      # Doc: https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
-      #      https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
-      - if: ${{ always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: logs-openbsd
-          path: |
-            ${{ env.package }}-*/build/config.cache
-            ${{ env.package }}-*/build/config.log
-            ${{ env.package }}-*/build/config.status
-            ${{ env.package }}-*/build/log[12345]
-            ${{ env.package }}-*/build/gettext-runtime/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/config.log
-            ${{ env.package }}-*/build/gettext-runtime/config.status
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.log
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.status
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.log
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.status
-            ${{ env.package }}-*/build/gettext-runtime/tests/test-suite.log
-            ${{ env.package }}-*/build/libtextstyle/config.cache
-            ${{ env.package }}-*/build/libtextstyle/config.log
-            ${{ env.package }}-*/build/libtextstyle/config.status
-            ${{ env.package }}-*/build/libtextstyle/tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/config.cache
-            ${{ env.package }}-*/build/gettext-tools/config.log
-            ${{ env.package }}-*/build/gettext-tools/config.status
-            ${{ env.package }}-*/build/gettext-tools/tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/system-tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/gnulib-tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/examples/config.cache
-            ${{ env.package }}-*/build/gettext-tools/examples/config.log
-            ${{ env.package }}-*/build/gettext-tools/examples/config.status
-            ${{ env.package }}-*/build-full/config.cache
-            ${{ env.package }}-*/build-full/config.log
-            ${{ env.package }}-*/build-full/config.status
-            ${{ env.package }}-*/build-full/log[12345]
-            ${{ env.package }}-*/build-full/gettext-runtime/config.cache
-            ${{ env.package }}-*/build-full/gettext-runtime/config.log
-            ${{ env.package }}-*/build-full/gettext-runtime/config.status
-            ${{ env.package }}-*/build-full/gettext-runtime/intl/config.cache
-            ${{ env.package }}-*/build-full/gettext-runtime/intl/config.log
-            ${{ env.package }}-*/build-full/gettext-runtime/intl/config.status
-            ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.cache
-            ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.log
-            ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.status
-            ${{ env.package }}-*/build-full/gettext-runtime/tests/test-suite.log
-            ${{ env.package }}-*/build-full/libtextstyle/config.cache
-            ${{ env.package }}-*/build-full/libtextstyle/config.log
-            ${{ env.package }}-*/build-full/libtextstyle/config.status
-            ${{ env.package }}-*/build-full/libtextstyle/tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/config.cache
-            ${{ env.package }}-*/build-full/gettext-tools/config.log
-            ${{ env.package }}-*/build-full/gettext-tools/config.status
-            ${{ env.package }}-*/build-full/gettext-tools/tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/system-tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/gnulib-tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/examples/config.cache
-            ${{ env.package }}-*/build-full/gettext-tools/examples/config.log
-            ${{ env.package }}-*/build-full/gettext-tools/examples/config.status
-          retention-days: 28
-          overwrite: true
-  check-solaris11:
-    name: make check on Solaris 11
-    needs: build-tarball
-    runs-on: ubuntu-22.04
-    steps:
-      # This is needed because we run a script stored in this repository.
-      - uses: actions/checkout@v4
-      # Download the artifact to $GITHUB_WORKSPACE.
-      # Doc: https://github.com/actions/download-artifact?tab=readme-ov-file#usage
-      - uses: actions/download-artifact@v4
-        with:
-          name: tarball
-      # Doc: https://github.com/vmactions/solaris-vm
-      - uses: vmactions/solaris-vm@v1
-        with:
-          # We can choose among
-          # - the '11.4' image and installing gcc from the Oracle packages site, or
-          # - the '11.4-gcc' image, that has gcc installed in /opt/csw/bin.
-          release: '11.4-gcc'
-          mem: 2048
-          prepare: |
-            : "Install Solaris packages"
-            : "List of packages: http://pkg.oracle.com/solaris/release/en/index.shtml"
-            pkg install gcc-c++ gnu-make; ret=$?; test $ret = 0 || test $ret = 4
-          run: |
-            set -x
-            uname -a
-            id
-            env | LC_ALL=C sort
-            pwd
-            ls -l
-            export CPPFLAGS="-Wall"
-            export CC="gcc -m64"
-            export CXX="g++ -m64"
-            ./build-on.sh '${{ env.package }}' '' 'gmake' "$HOME" '' 'pkg install json-c curl gcc-gobjc clisp jdk-8 gawk tcl-8 golang lua gjs vala automake system/locale'
-      # Doc: https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
-      #      https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
-      - if: ${{ always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: logs-solaris11
-          path: |
-            ${{ env.package }}-*/build/config.cache
-            ${{ env.package }}-*/build/config.log
-            ${{ env.package }}-*/build/config.status
-            ${{ env.package }}-*/build/log[12345]
-            ${{ env.package }}-*/build/gettext-runtime/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/config.log
-            ${{ env.package }}-*/build/gettext-runtime/config.status
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.log
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.status
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.log
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.status
-            ${{ env.package }}-*/build/gettext-runtime/tests/test-suite.log
-            ${{ env.package }}-*/build/libtextstyle/config.cache
-            ${{ env.package }}-*/build/libtextstyle/config.log
-            ${{ env.package }}-*/build/libtextstyle/config.status
-            ${{ env.package }}-*/build/libtextstyle/tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/config.cache
-            ${{ env.package }}-*/build/gettext-tools/config.log
-            ${{ env.package }}-*/build/gettext-tools/config.status
-            ${{ env.package }}-*/build/gettext-tools/tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/system-tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/gnulib-tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/examples/config.cache
-            ${{ env.package }}-*/build/gettext-tools/examples/config.log
-            ${{ env.package }}-*/build/gettext-tools/examples/config.status
-            ${{ env.package }}-*/build-full/config.cache
-            ${{ env.package }}-*/build-full/config.log
-            ${{ env.package }}-*/build-full/config.status
-            ${{ env.package }}-*/build-full/log[12345]
-            ${{ env.package }}-*/build-full/gettext-runtime/config.cache
-            ${{ env.package }}-*/build-full/gettext-runtime/config.log
-            ${{ env.package }}-*/build-full/gettext-runtime/config.status
-            ${{ env.package }}-*/build-full/gettext-runtime/intl/config.cache
-            ${{ env.package }}-*/build-full/gettext-runtime/intl/config.log
-            ${{ env.package }}-*/build-full/gettext-runtime/intl/config.status
-            ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.cache
-            ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.log
-            ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.status
-            ${{ env.package }}-*/build-full/gettext-runtime/tests/test-suite.log
-            ${{ env.package }}-*/build-full/libtextstyle/config.cache
-            ${{ env.package }}-*/build-full/libtextstyle/config.log
-            ${{ env.package }}-*/build-full/libtextstyle/config.status
-            ${{ env.package }}-*/build-full/libtextstyle/tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/config.cache
-            ${{ env.package }}-*/build-full/gettext-tools/config.log
-            ${{ env.package }}-*/build-full/gettext-tools/config.status
-            ${{ env.package }}-*/build-full/gettext-tools/tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/system-tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/gnulib-tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/examples/config.cache
-            ${{ env.package }}-*/build-full/gettext-tools/examples/config.log
-            ${{ env.package }}-*/build-full/gettext-tools/examples/config.status
-          retention-days: 28
-          overwrite: true
-  check-solaris11-omnios:
-    name: make check on Solaris 11 OmniOS
-    needs: build-tarball
-    runs-on: ubuntu-22.04
-    steps:
-      # This is needed because we run a script stored in this repository.
-      - uses: actions/checkout@v4
-      # Download the artifact to $GITHUB_WORKSPACE.
-      # Doc: https://github.com/actions/download-artifact?tab=readme-ov-file#usage
-      - uses: actions/download-artifact@v4
-        with:
-          name: tarball
-      # Doc: https://github.com/vmactions/omnios-vm
-      - uses: vmactions/omnios-vm@v1
-        with:
-          release: "r151048"
-          mem: 2048
-          prepare: |
-            : "Install Solaris packages"
-            : "List of packages: https://pkg.omnios.org/r151048/core/en/index.shtml"
-            pkg install \
-                developer/gcc13 developer/object-file system/header system/library/math \
-                developer/build/gnu-make \
-                system/library/iconv/unicode \
-                system/library/g++-runtime
-          run: |
-            set -x
-            uname -a
-            id
-            env | LC_ALL=C sort
-            pwd
-            ls -l
-            export CPPFLAGS="-Wall"
-            ./build-on.sh '${{ env.package }}' '' 'gmake' "$HOME" '' 'pkg install web/curl runtime/python-37 runtime/java/openjdk11 text/gawk runtime/perl developer/build/autoconf developer/build/automake locale/de locale/es locale/fr locale/tr'
-      # Doc: https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
-      #      https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
-      - if: ${{ always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: logs-solaris11-omnios
-          path: |
-            ${{ env.package }}-*/build/config.cache
-            ${{ env.package }}-*/build/config.log
-            ${{ env.package }}-*/build/config.status
-            ${{ env.package }}-*/build/log[12345]
-            ${{ env.package }}-*/build/gettext-runtime/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/config.log
-            ${{ env.package }}-*/build/gettext-runtime/config.status
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.log
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.status
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.log
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.status
-            ${{ env.package }}-*/build/gettext-runtime/tests/test-suite.log
-            ${{ env.package }}-*/build/libtextstyle/config.cache
-            ${{ env.package }}-*/build/libtextstyle/config.log
-            ${{ env.package }}-*/build/libtextstyle/config.status
-            ${{ env.package }}-*/build/libtextstyle/tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/config.cache
-            ${{ env.package }}-*/build/gettext-tools/config.log
-            ${{ env.package }}-*/build/gettext-tools/config.status
-            ${{ env.package }}-*/build/gettext-tools/tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/system-tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/gnulib-tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/examples/config.cache
-            ${{ env.package }}-*/build/gettext-tools/examples/config.log
-            ${{ env.package }}-*/build/gettext-tools/examples/config.status
-            ${{ env.package }}-*/build-full/config.cache
-            ${{ env.package }}-*/build-full/config.log
-            ${{ env.package }}-*/build-full/config.status
-            ${{ env.package }}-*/build-full/log[12345]
-            ${{ env.package }}-*/build-full/gettext-runtime/config.cache
-            ${{ env.package }}-*/build-full/gettext-runtime/config.log
-            ${{ env.package }}-*/build-full/gettext-runtime/config.status
-            ${{ env.package }}-*/build-full/gettext-runtime/intl/config.cache
-            ${{ env.package }}-*/build-full/gettext-runtime/intl/config.log
-            ${{ env.package }}-*/build-full/gettext-runtime/intl/config.status
-            ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.cache
-            ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.log
-            ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.status
-            ${{ env.package }}-*/build-full/gettext-runtime/tests/test-suite.log
-            ${{ env.package }}-*/build-full/libtextstyle/config.cache
-            ${{ env.package }}-*/build-full/libtextstyle/config.log
-            ${{ env.package }}-*/build-full/libtextstyle/config.status
-            ${{ env.package }}-*/build-full/libtextstyle/tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/config.cache
-            ${{ env.package }}-*/build-full/gettext-tools/config.log
-            ${{ env.package }}-*/build-full/gettext-tools/config.status
-            ${{ env.package }}-*/build-full/gettext-tools/tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/system-tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/gnulib-tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/examples/config.cache
-            ${{ env.package }}-*/build-full/gettext-tools/examples/config.log
-            ${{ env.package }}-*/build-full/gettext-tools/examples/config.status
-          retention-days: 28
-          overwrite: true
-  check-cygwin:
-    name: make check on Cygwin
-    needs: build-tarball
-    # Doc: https://docs.github.com/en/actions/using-jobs/using-a-matrix-for-your-jobs
-    strategy:
-      fail-fast: false
-      matrix:
-        bitness: [32, 64]
-    runs-on: windows-2022
-    defaults:
-      run:
-        shell: C:\cygwin\bin\bash.exe -eo pipefail -o igncr '{0}'
-    env:
-      CYGWIN_NOWINPATH: 1
-    steps:
-      # This is needed because we run a script stored in this repository.
-      - run: git config --global core.autocrlf input
-        shell: cmd
-      - uses: actions/checkout@v4
-      # Download the artifact to $GITHUB_WORKSPACE.
-      # Doc: https://github.com/actions/download-artifact?tab=readme-ov-file#usage
-      - uses: actions/download-artifact@v4
-        with:
-          name: tarball
-      # Doc: https://github.com/cygwin/cygwin-install-action
-      - uses: cygwin/cygwin-install-action@v4
-        with:
-          platform: ${{ matrix.bitness == 32 && 'x86' || 'x86_64' }}
-          # Install Cygwin packages.
-          # List of packages: https://cygwin.com/packages/package_list.html
-          packages: gcc-core gcc-g++ make libiconv-devel libjson-c-devel libcurl-devel ocaml opam
-      - name: cygcheck
-        run: cygcheck -V
-      - name: cygcheck
-        run: cygcheck -s -r
-      - name: Windows version
-        run: cmd /c ver
-      - run: uname -a
-      - run: id
-      - run: env | LC_ALL=C sort
-      - run: pwd
-      - run: ls -l
-      - run: echo "$PATH"
-      - run: ls -l /usr/bin
-      - run: type java || true
-      - run: type tclsh || true
-      # Avoid errors such as
-      # child_info_fork::abort: \??\C:\cygwin\bin\cygiconv-2.dll: Loaded to different address: parent(0xEE0000) != child(0x820000)
-      # Cf. https://stackoverflow.com/questions/9300722/
-      - if: ${{ matrix.bitness == 32 }}
-        run: /usr/bin/rebaseall
-      - name: Build in Cygwin
-        run: |
-          : "Set a PATH without native Windows implementations like java and tclsh."
-          export PATH="/usr/bin:/cygdrive/c/Windows/system32:/cygdrive/c/Windows"
-          export CPPFLAGS="-Wall"
-          ./build-on.sh '${{ env.package }}' '${{ matrix.bitness == 32 && '--disable-shared' || '' }} --enable-csharp=dotnet' 'make' '/usr' '' ''
-      # Doc: https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
-      #      https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
-      - if: ${{ always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: logs-cygwin${{ matrix.bitness }}
-          path: |
-            ${{ env.package }}-*/build/config.cache
-            ${{ env.package }}-*/build/config.log
-            ${{ env.package }}-*/build/config.status
-            ${{ env.package }}-*/build/log[12345]
-            ${{ env.package }}-*/build/gettext-runtime/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/config.log
-            ${{ env.package }}-*/build/gettext-runtime/config.status
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.log
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.status
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.log
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.status
-            ${{ env.package }}-*/build/gettext-runtime/tests/test-suite.log
-            ${{ env.package }}-*/build/libtextstyle/config.cache
-            ${{ env.package }}-*/build/libtextstyle/config.log
-            ${{ env.package }}-*/build/libtextstyle/config.status
-            ${{ env.package }}-*/build/libtextstyle/tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/config.cache
-            ${{ env.package }}-*/build/gettext-tools/config.log
-            ${{ env.package }}-*/build/gettext-tools/config.status
-            ${{ env.package }}-*/build/gettext-tools/tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/system-tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/gnulib-tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/examples/config.cache
-            ${{ env.package }}-*/build/gettext-tools/examples/config.log
-            ${{ env.package }}-*/build/gettext-tools/examples/config.status
-          retention-days: 28
-          overwrite: true
-  check-mingw:
-    name: make check on mingw
-    needs: build-tarball
-    # Doc: https://docs.github.com/en/actions/using-jobs/using-a-matrix-for-your-jobs
-    strategy:
-      fail-fast: false
-      matrix:
-        bitness: [32, 64]
-    runs-on: windows-2022
-    defaults:
-      run:
-        shell: C:\cygwin\bin\bash.exe -eo pipefail -o igncr '{0}'
-    env:
-      CYGWIN_NOWINPATH: 1
-    steps:
-      # This is needed because we run a script stored in this repository.
-      - run: git config --global core.autocrlf input
-        shell: cmd
-      - uses: actions/checkout@v4
-      # Download the artifact to $GITHUB_WORKSPACE.
-      # Doc: https://github.com/actions/download-artifact?tab=readme-ov-file#usage
-      - uses: actions/download-artifact@v4
-        with:
-          name: tarball
-      # Doc: https://github.com/cygwin/cygwin-install-action
-      - uses: cygwin/cygwin-install-action@v4
-        with:
-          platform: x86_64
-          # Install Cygwin packages.
-          # List of packages: https://cygwin.com/packages/package_list.html
-          packages: wget ${{ matrix.bitness == 32 && 'mingw64-i686-gcc-core mingw64-i686-gcc-g++ mingw64-i686-headers mingw64-i686-runtime mingw64-i686-curl' || 'mingw64-x86_64-gcc-core mingw64-x86_64-gcc-g++ mingw64-x86_64-headers mingw64-x86_64-runtime mingw64-x86_64-curl' }} make
-      - name: cygcheck
-        run: cygcheck -V
-      - name: cygcheck
-        run: cygcheck -s -r
-      - name: Windows version
-        run: cmd /c ver
-      - run: uname -a
-      - run: id
-      - run: env | LC_ALL=C sort
-      - run: pwd
-      - run: ls -l
-      - run: echo "$PATH"
-      - run: ls -l /usr/bin
-      - name: Build in Cygwin
-        run: |
-          set -x
-          PATH=/usr/${{ matrix.bitness == 32 && 'i686' || 'x86_64' }}-w64-mingw32/sys-root/mingw/bin:$PATH
-          export CPPFLAGS="-Wall"
-          export CC=${{ matrix.bitness == 32 && 'i686' || 'x86_64' }}-w64-mingw32-gcc
-          export CXX=${{ matrix.bitness == 32 && 'i686' || 'x86_64' }}-w64-mingw32-g++
-          wget -O libiconv-1.18.tar.gz https://${{ env.ftp_gnu_org }}/gnu/libiconv/libiconv-1.18.tar.gz
-          ./build-on.sh '${{ env.package }}' '--host=${{ matrix.bitness == 32 && 'i686' || 'x86_64' }}-w64-mingw32 --enable-csharp=dotnet' 'make' '/usr/${{ matrix.bitness == 32 && 'i686' || 'x86_64' }}-w64-mingw32/sys-root/mingw' 'libiconv-1.18' ''
-      # Doc: https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
-      #      https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
-      - if: ${{ always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: logs-mingw${{ matrix.bitness }}
-          path: |
-            ${{ env.package }}-*/build/config.cache
-            ${{ env.package }}-*/build/config.log
-            ${{ env.package }}-*/build/config.status
-            ${{ env.package }}-*/build/log[12345]
-            ${{ env.package }}-*/build/gettext-runtime/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/config.log
-            ${{ env.package }}-*/build/gettext-runtime/config.status
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.log
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.status
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.log
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.status
-            ${{ env.package }}-*/build/gettext-runtime/tests/test-suite.log
-            ${{ env.package }}-*/build/libtextstyle/config.cache
-            ${{ env.package }}-*/build/libtextstyle/config.log
-            ${{ env.package }}-*/build/libtextstyle/config.status
-            ${{ env.package }}-*/build/libtextstyle/tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/config.cache
-            ${{ env.package }}-*/build/gettext-tools/config.log
-            ${{ env.package }}-*/build/gettext-tools/config.status
-            ${{ env.package }}-*/build/gettext-tools/tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/system-tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/gnulib-tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/examples/config.cache
-            ${{ env.package }}-*/build/gettext-tools/examples/config.log
-            ${{ env.package }}-*/build/gettext-tools/examples/config.status
-          retention-days: 28
-          overwrite: true
+
+
+  # # We can run max. 20 "make check" jobs in parallel, max. 5 of them being on macOS.
+  # # See https://docs.github.com/en/actions/learn-github-actions/usage-limits-billing-and-administration
+  # check-linux-gnu-ubuntu:
+  #   name: make check on Ubuntu GNU/Linux
+  #   needs: build-tarball
+  #   runs-on: ubuntu-22.04
+  #   steps:
+  #     # This is needed because we run a script stored in this repository.
+  #     - uses: actions/checkout@v4
+  #     # Download the artifact to $GITHUB_WORKSPACE.
+  #     # Doc: https://github.com/actions/download-artifact?tab=readme-ov-file#usage
+  #     - uses: actions/download-artifact@v4
+  #       with:
+  #         name: tarball
+  #     - run: uname -a
+  #     - run: id
+  #     - run: env | LC_ALL=C sort
+  #     - run: pwd
+  #     # Install Ubuntu packages.
+  #     # List of packages: https://packages.ubuntu.com/
+  #     # - run: sudo apt update; sudo apt install ...
+  #     - run: |
+  #         pwd
+  #         export CPPFLAGS="-Wall"
+  #         ./build-on.sh '${{ env.package }}' '' 'make' "$HOME" '' 'sudo apt update; sudo apt install libjson-c-dev libcurl4-gnutls-dev g++ gobjc python3 clisp rep guile-3.0 gnu-smalltalk openjdk-11-jdk mono-mcs gm2 gdc fp-compiler fp-units-fcl ocaml opam tcl perl libintl-perl php golang-go ruby ruby-gettext lua5.4 gjs valac && sudo localedef -i ar_SA -f ISO-8859-6 ar_SA.ISO-8859-6 && sudo localedef -i de_DE -f ISO-8859-1 de_DE.ISO-8859-1 && sudo localedef -i de_DE -f UTF-8 de_DE.UTF-8 && sudo localedef -i es_ES -f UTF-8 es_ES.UTF-8 && sudo localedef -i fa_IR -f UTF-8 fa_IR && sudo localedef -i fr_FR -f ISO-8859-1 fr_FR.ISO-8859-1 && sudo localedef -i fr_FR -f UTF-8 fr_FR.UTF-8 && sudo localedef -i ja_JP -f EUC-JP ja_JP.EUC-JP && sudo localedef -i tr_TR -f UTF-8 tr_TR.UTF-8 && sudo localedef -i zh_CN -f GB18030 zh_CN.GB18030'
+  #     # Doc: https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
+  #     #      https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
+  #     - if: ${{ always() }}
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: logs-linux-gnu-ubuntu
+  #         path: |
+  #           ${{ env.package }}-*/build/config.cache
+  #           ${{ env.package }}-*/build/config.log
+  #           ${{ env.package }}-*/build/config.status
+  #           ${{ env.package }}-*/build/log[12345]
+  #           ${{ env.package }}-*/build/gettext-runtime/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/tests/test-suite.log
+  #           ${{ env.package }}-*/build/libtextstyle/config.cache
+  #           ${{ env.package }}-*/build/libtextstyle/config.log
+  #           ${{ env.package }}-*/build/libtextstyle/config.status
+  #           ${{ env.package }}-*/build/libtextstyle/tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/config.cache
+  #           ${{ env.package }}-*/build/gettext-tools/config.log
+  #           ${{ env.package }}-*/build/gettext-tools/config.status
+  #           ${{ env.package }}-*/build/gettext-tools/tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/system-tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/gnulib-tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.cache
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.log
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.status
+  #           ${{ env.package }}-*/build-full/config.cache
+  #           ${{ env.package }}-*/build-full/config.log
+  #           ${{ env.package }}-*/build-full/config.status
+  #           ${{ env.package }}-*/build-full/log[12345]
+  #           ${{ env.package }}-*/build-full/gettext-runtime/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-runtime/config.log
+  #           ${{ env.package }}-*/build-full/gettext-runtime/config.status
+  #           ${{ env.package }}-*/build-full/gettext-runtime/intl/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-runtime/intl/config.log
+  #           ${{ env.package }}-*/build-full/gettext-runtime/intl/config.status
+  #           ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.log
+  #           ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.status
+  #           ${{ env.package }}-*/build-full/gettext-runtime/tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/libtextstyle/config.cache
+  #           ${{ env.package }}-*/build-full/libtextstyle/config.log
+  #           ${{ env.package }}-*/build-full/libtextstyle/config.status
+  #           ${{ env.package }}-*/build-full/libtextstyle/tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-tools/config.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/config.status
+  #           ${{ env.package }}-*/build-full/gettext-tools/tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/system-tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/gnulib-tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/examples/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-tools/examples/config.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/examples/config.status
+  #         retention-days: 28
+  #         overwrite: true
+  # check-linux-gnu-centos:
+  #   name: make check on CentOS GNU/Linux
+  #   needs: build-tarball
+  #   runs-on: ubuntu-22.04
+  #   steps:
+  #     # This is needed because we run a script stored in this repository.
+  #     - uses: actions/checkout@v4
+  #     # Download the artifact to $GITHUB_WORKSPACE.
+  #     # Doc: https://github.com/actions/download-artifact?tab=readme-ov-file#usage
+  #     - uses: actions/download-artifact@v4
+  #       with:
+  #         name: tarball
+  #     - uses: maus007/docker-run-action-fork@v1
+  #       with:
+  #         image: centos:7
+  #         options: -v ${{ github.workspace }}:/work
+  #         run: |
+  #           uname -a
+  #           id
+  #           env | LC_ALL=C sort
+  #           pwd
+  #           : "The CentOS packages repository has moved on 2024-07-01."
+  #           sed -i -e 's|^mirrorlist=|#mirrorlist=|' -e 's|^#baseurl=http://mirror\.centos\.org|baseurl=http://vault.centos.org|' /etc/yum.repos.d/CentOS-Base.repo
+  #           : "Install CentOS Linux packages"
+  #           : "List of packages: http://vault.centos.org/centos/7/os/x86_64/Packages/"
+  #           yum -y install wget make gcc gcc-c++
+  #           cd /work
+  #           ls -l
+  #           export CPPFLAGS="-Wall"
+  #           wget -O make-4.2.1.tar.gz https://${{ env.ftp_gnu_org }}/gnu/make/make-4.2.1.tar.gz
+  #           ./build-on.sh '${{ env.package }}' '' 'make' '/usr/local' 'make-4.2.1' 'yum -y install epel-release && yum -y install json-c-devel libcurl-devel gcc-c++ gcc-objc python3 guile gnu-smalltalk java-11-openjdk-devel mono-devel tcl perl perl-libintl php gcc-go ruby ruby-gettext lua gjs vala glibc-common && localedef -i ar_SA -f ISO-8859-6 ar_SA.ISO-8859-6 && localedef -i de_DE -f ISO-8859-1 de_DE.ISO-8859-1 && localedef -i de_DE -f UTF-8 de_DE.UTF-8 && localedef -i es_ES -f UTF-8 es_ES.UTF-8 && localedef -i fa_IR -f UTF-8 fa_IR && localedef -i fr_FR -f ISO-8859-1 fr_FR.ISO-8859-1 && localedef -i fr_FR -f UTF-8 fr_FR.UTF-8 && localedef -i ja_JP -f EUC-JP ja_JP.EUC-JP && localedef -i tr_TR -f UTF-8 tr_TR.UTF-8 && localedef -i zh_CN -f GB18030 zh_CN.GB18030'
+  #     # Doc: https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
+  #     #      https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
+  #     - if: ${{ always() }}
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: logs-linux-gnu-centos
+  #         path: |
+  #           ${{ env.package }}-*/build/config.cache
+  #           ${{ env.package }}-*/build/config.log
+  #           ${{ env.package }}-*/build/config.status
+  #           ${{ env.package }}-*/build/log[12345]
+  #           ${{ env.package }}-*/build/gettext-runtime/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/tests/test-suite.log
+  #           ${{ env.package }}-*/build/libtextstyle/config.cache
+  #           ${{ env.package }}-*/build/libtextstyle/config.log
+  #           ${{ env.package }}-*/build/libtextstyle/config.status
+  #           ${{ env.package }}-*/build/libtextstyle/tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/config.cache
+  #           ${{ env.package }}-*/build/gettext-tools/config.log
+  #           ${{ env.package }}-*/build/gettext-tools/config.status
+  #           ${{ env.package }}-*/build/gettext-tools/tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/system-tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/gnulib-tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.cache
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.log
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.status
+  #           ${{ env.package }}-*/build-full/config.cache
+  #           ${{ env.package }}-*/build-full/config.log
+  #           ${{ env.package }}-*/build-full/config.status
+  #           ${{ env.package }}-*/build-full/log[12345]
+  #           ${{ env.package }}-*/build-full/gettext-runtime/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-runtime/config.log
+  #           ${{ env.package }}-*/build-full/gettext-runtime/config.status
+  #           ${{ env.package }}-*/build-full/gettext-runtime/intl/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-runtime/intl/config.log
+  #           ${{ env.package }}-*/build-full/gettext-runtime/intl/config.status
+  #           ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.log
+  #           ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.status
+  #           ${{ env.package }}-*/build-full/gettext-runtime/tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/libtextstyle/config.cache
+  #           ${{ env.package }}-*/build-full/libtextstyle/config.log
+  #           ${{ env.package }}-*/build-full/libtextstyle/config.status
+  #           ${{ env.package }}-*/build-full/libtextstyle/tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-tools/config.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/config.status
+  #           ${{ env.package }}-*/build-full/gettext-tools/tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/system-tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/gnulib-tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/examples/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-tools/examples/config.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/examples/config.status
+  #         retention-days: 28
+  #         overwrite: true
+  # check-linux-gnu-alma:
+  #   name: make check on AlmaLinux GNU/Linux
+  #   needs: build-tarball
+  #   runs-on: ubuntu-22.04
+  #   steps:
+  #     # This is needed because we run a script stored in this repository.
+  #     - uses: actions/checkout@v4
+  #     # Download the artifact to $GITHUB_WORKSPACE.
+  #     # Doc: https://github.com/actions/download-artifact?tab=readme-ov-file#usage
+  #     - uses: actions/download-artifact@v4
+  #       with:
+  #         name: tarball
+  #     - uses: maus007/docker-run-action-fork@v1
+  #       with:
+  #         image: almalinux:9
+  #         options: -v ${{ github.workspace }}:/work
+  #         run: |
+  #           uname -a
+  #           id
+  #           env | LC_ALL=C sort
+  #           pwd
+  #           : "Install AlmaLinux packages"
+  #           : "List of packages: https://repo.almalinux.org/almalinux/9/BaseOS/x86_64/os/Packages/"
+  #           : "                  https://repo.almalinux.org/almalinux/9/AppStream/x86_64/os/Packages/"
+  #           : "                  https://repo.almalinux.org/almalinux/9/CRB/x86_64/os/Packages/"
+  #           : "                  https://repo.almalinux.org/almalinux/9/devel/x86_64/os/Packages/"
+  #           : "Explanation: https://wiki.almalinux.org/repos/AlmaLinux.html"
+  #           yum -y install glibc-gconv-extra make gcc gcc-c++ diffutils
+  #           cd /work
+  #           ls -l
+  #           export CPPFLAGS="-Wall"
+  #           ./build-on.sh '${{ env.package }}' '' 'make' '/usr/local' '' 'yum -y install epel-release && crb enable && yum -y install json-c-devel libcurl-devel gcc-c++ gcc-objc python3 guile30 java-11-openjdk-devel mono-devel gcc-gdc fpc tcl perl perl-libintl php golang ruby lua gjs autoconf automake glibc-locale-source && ln -s guile3.0 /usr/bin/guile && localedef -i ar_SA -f ISO-8859-6 ar_SA.ISO-8859-6 && localedef -i de_DE -f ISO-8859-1 de_DE.ISO-8859-1 && localedef -i de_DE -f UTF-8 de_DE.UTF-8 && localedef -i es_ES -f UTF-8 es_ES.UTF-8 && localedef -i fa_IR -f UTF-8 fa_IR && localedef -i fr_FR -f ISO-8859-1 fr_FR.ISO-8859-1 && localedef -i fr_FR -f UTF-8 fr_FR.UTF-8 && localedef -i ja_JP -f EUC-JP ja_JP.EUC-JP && localedef -i tr_TR -f UTF-8 tr_TR.UTF-8 && localedef -i zh_CN -f GB18030 zh_CN.GB18030'
+  #     # Doc: https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
+  #     #      https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
+  #     - if: ${{ always() }}
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: logs-linux-gnu-alma
+  #         path: |
+  #           ${{ env.package }}-*/build/config.cache
+  #           ${{ env.package }}-*/build/config.log
+  #           ${{ env.package }}-*/build/config.status
+  #           ${{ env.package }}-*/build/log[12345]
+  #           ${{ env.package }}-*/build/gettext-runtime/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/tests/test-suite.log
+  #           ${{ env.package }}-*/build/libtextstyle/config.cache
+  #           ${{ env.package }}-*/build/libtextstyle/config.log
+  #           ${{ env.package }}-*/build/libtextstyle/config.status
+  #           ${{ env.package }}-*/build/libtextstyle/tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/config.cache
+  #           ${{ env.package }}-*/build/gettext-tools/config.log
+  #           ${{ env.package }}-*/build/gettext-tools/config.status
+  #           ${{ env.package }}-*/build/gettext-tools/tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/system-tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/gnulib-tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.cache
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.log
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.status
+  #           ${{ env.package }}-*/build-full/config.cache
+  #           ${{ env.package }}-*/build-full/config.log
+  #           ${{ env.package }}-*/build-full/config.status
+  #           ${{ env.package }}-*/build-full/log[12345]
+  #           ${{ env.package }}-*/build-full/gettext-runtime/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-runtime/config.log
+  #           ${{ env.package }}-*/build-full/gettext-runtime/config.status
+  #           ${{ env.package }}-*/build-full/gettext-runtime/intl/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-runtime/intl/config.log
+  #           ${{ env.package }}-*/build-full/gettext-runtime/intl/config.status
+  #           ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.log
+  #           ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.status
+  #           ${{ env.package }}-*/build-full/gettext-runtime/tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/libtextstyle/config.cache
+  #           ${{ env.package }}-*/build-full/libtextstyle/config.log
+  #           ${{ env.package }}-*/build-full/libtextstyle/config.status
+  #           ${{ env.package }}-*/build-full/libtextstyle/tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-tools/config.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/config.status
+  #           ${{ env.package }}-*/build-full/gettext-tools/tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/system-tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/gnulib-tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/examples/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-tools/examples/config.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/examples/config.status
+  #         retention-days: 28
+  #         overwrite: true
+  # check-linux-alpine:
+  #   name: make check on Alpine Linux
+  #   needs: build-tarball
+  #   runs-on: ubuntu-22.04
+  #   steps:
+  #     # This is needed because we run a script stored in this repository.
+  #     - uses: actions/checkout@v4
+  #     # Download the artifact to $GITHUB_WORKSPACE.
+  #     # Doc: https://github.com/actions/download-artifact?tab=readme-ov-file#usage
+  #     - uses: actions/download-artifact@v4
+  #       with:
+  #         name: tarball
+  #     - uses: maus007/docker-run-action-fork@v1
+  #       with:
+  #         image: alpine:3
+  #         options: -v ${{ github.workspace }}:/work
+  #         run: |
+  #           uname -a
+  #           id
+  #           env | LC_ALL=C sort
+  #           pwd
+  #           : "Install Alpine Linux packages"
+  #           : "List of packages: https://pkgs.alpinelinux.org/packages"
+  #           apk add make gcc musl-dev linux-headers g++ gnu-libiconv-dev
+  #           cd /work
+  #           ls -l
+  #           export CPPFLAGS="-I/usr/include/gnu-libiconv -Wall"
+  #           ./build-on.sh '${{ env.package }}' '' 'make' '/usr/local' '' 'apk add json-c-dev curl-dev g++ gcc-objc python3 clisp guile openjdk17 mono gcc-gdc gawk fpc ocaml opam tcl perl perl-libintl-perl php83 gcc-go ruby gjs vala musl-locales autoconf automake --repository=https://dl-cdn.alpinelinux.org/alpine/edge/testing'
+  #     # Doc: https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
+  #     #      https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
+  #     - if: ${{ always() }}
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: logs-linux-alpine
+  #         path: |
+  #           ${{ env.package }}-*/build/config.cache
+  #           ${{ env.package }}-*/build/config.log
+  #           ${{ env.package }}-*/build/config.status
+  #           ${{ env.package }}-*/build/log[12345]
+  #           ${{ env.package }}-*/build/gettext-runtime/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/tests/test-suite.log
+  #           ${{ env.package }}-*/build/libtextstyle/config.cache
+  #           ${{ env.package }}-*/build/libtextstyle/config.log
+  #           ${{ env.package }}-*/build/libtextstyle/config.status
+  #           ${{ env.package }}-*/build/libtextstyle/tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/config.cache
+  #           ${{ env.package }}-*/build/gettext-tools/config.log
+  #           ${{ env.package }}-*/build/gettext-tools/config.status
+  #           ${{ env.package }}-*/build/gettext-tools/tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/system-tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/gnulib-tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.cache
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.log
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.status
+  #           ${{ env.package }}-*/build-full/config.cache
+  #           ${{ env.package }}-*/build-full/config.log
+  #           ${{ env.package }}-*/build-full/config.status
+  #           ${{ env.package }}-*/build-full/log[12345]
+  #           ${{ env.package }}-*/build-full/gettext-runtime/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-runtime/config.log
+  #           ${{ env.package }}-*/build-full/gettext-runtime/config.status
+  #           ${{ env.package }}-*/build-full/gettext-runtime/intl/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-runtime/intl/config.log
+  #           ${{ env.package }}-*/build-full/gettext-runtime/intl/config.status
+  #           ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.log
+  #           ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.status
+  #           ${{ env.package }}-*/build-full/gettext-runtime/tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/libtextstyle/config.cache
+  #           ${{ env.package }}-*/build-full/libtextstyle/config.log
+  #           ${{ env.package }}-*/build-full/libtextstyle/config.status
+  #           ${{ env.package }}-*/build-full/libtextstyle/tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-tools/config.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/config.status
+  #           ${{ env.package }}-*/build-full/gettext-tools/tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/system-tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/gnulib-tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/examples/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-tools/examples/config.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/examples/config.status
+  #         retention-days: 28
+  #         overwrite: true
+  # check-macos:
+  #   name: make check on macOS
+  #   needs: build-tarball
+  #   # Doc: https://docs.github.com/en/actions/using-jobs/using-a-matrix-for-your-jobs
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       os: [macos-14, macos-15, macos-26]
+  #       # The unit test lang-c++20 fails on macOS 14, due to broken C++ header files.
+  #       exclude:
+  #         - os: macos-14
+  #   runs-on: ${{ matrix.os }}
+  #   steps:
+  #     # This is needed because we run a script stored in this repository.
+  #     - uses: actions/checkout@v4
+  #     # Download the artifact to $GITHUB_WORKSPACE.
+  #     # Doc: https://github.com/actions/download-artifact?tab=readme-ov-file#usage
+  #     - uses: actions/download-artifact@v4
+  #       with:
+  #         name: tarball
+  #     - run: uname -a
+  #     - run: id
+  #     - run: env | LC_ALL=C sort
+  #     - run: pwd
+  #     # Install Homebrew packages.
+  #     # List of packages: https://formulae.brew.sh/
+  #     - run: ${{ 'brew install libiconv' }}
+  #     - run: |
+  #         pwd
+  #         export CPPFLAGS="-I$HOME/include -I${HOMEBREW_PREFIX-/usr/local}/opt/libiconv/include -I${HOMEBREW_PREFIX-/usr/local}/opt/json-c/include -Wall"
+  #         export LDFLAGS="-L$HOME/lib -L${HOMEBREW_PREFIX-/usr/local}/opt/libiconv/lib -L${HOMEBREW_PREFIX-/usr/local}/opt/json-c/lib"
+  #         : "Don't try 'ldc' on this platform, because it is broken on macOS 15:"
+  #         : Segmentation fault: 11  ldc2 -g -O "-I../../../gettext-runtime/intl-d" "-c" "../../../gettext-runtime/intl-d/gnu/libintl/package.d"
+  #         ./build-on.sh '${{ env.package }}' '' 'make' "$HOME" '' 'brew install svn && brew install json-c curl python clisp guile gnu-smalltalk openjdk mono gawk fpc ocaml opam tcl-tk perl php go ruby lua gjs vala automake'
+  #     # Doc: https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
+  #     #      https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
+  #     - if: ${{ always() }}
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: logs-${{ matrix.os }}
+  #         path: |
+  #           ${{ env.package }}-*/build/config.cache
+  #           ${{ env.package }}-*/build/config.log
+  #           ${{ env.package }}-*/build/config.status
+  #           ${{ env.package }}-*/build/log[12345]
+  #           ${{ env.package }}-*/build/gettext-runtime/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/tests/test-suite.log
+  #           ${{ env.package }}-*/build/libtextstyle/config.cache
+  #           ${{ env.package }}-*/build/libtextstyle/config.log
+  #           ${{ env.package }}-*/build/libtextstyle/config.status
+  #           ${{ env.package }}-*/build/libtextstyle/tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/config.cache
+  #           ${{ env.package }}-*/build/gettext-tools/config.log
+  #           ${{ env.package }}-*/build/gettext-tools/config.status
+  #           ${{ env.package }}-*/build/gettext-tools/tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/system-tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/gnulib-tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.cache
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.log
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.status
+  #           ${{ env.package }}-*/build-full/config.cache
+  #           ${{ env.package }}-*/build-full/config.log
+  #           ${{ env.package }}-*/build-full/config.status
+  #           ${{ env.package }}-*/build-full/log[12345]
+  #           ${{ env.package }}-*/build-full/gettext-runtime/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-runtime/config.log
+  #           ${{ env.package }}-*/build-full/gettext-runtime/config.status
+  #           ${{ env.package }}-*/build-full/gettext-runtime/intl/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-runtime/intl/config.log
+  #           ${{ env.package }}-*/build-full/gettext-runtime/intl/config.status
+  #           ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.log
+  #           ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.status
+  #           ${{ env.package }}-*/build-full/gettext-runtime/tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/libtextstyle/config.cache
+  #           ${{ env.package }}-*/build-full/libtextstyle/config.log
+  #           ${{ env.package }}-*/build-full/libtextstyle/config.status
+  #           ${{ env.package }}-*/build-full/libtextstyle/tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-tools/config.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/config.status
+  #           ${{ env.package }}-*/build-full/gettext-tools/tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/system-tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/gnulib-tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/examples/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-tools/examples/config.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/examples/config.status
+  #         retention-days: 28
+  #         overwrite: true
+  # check-freebsd:
+  #   name: make check on FreeBSD
+  #   needs: build-tarball
+  #   # The FreeBSD runners sometimes get stuck.
+  #   timeout-minutes: 15
+  #   runs-on: ubuntu-22.04
+  #   steps:
+  #     # This is needed because we run a script stored in this repository.
+  #     - uses: actions/checkout@v4
+  #     # Download the artifact to $GITHUB_WORKSPACE.
+  #     # Doc: https://github.com/actions/download-artifact?tab=readme-ov-file#usage
+  #     - uses: actions/download-artifact@v4
+  #       with:
+  #         name: tarball
+  #     # Doc: https://github.com/vmactions/freebsd-vm
+  #     - uses: vmactions/freebsd-vm@v1
+  #       with:
+  #         release: '14.0'
+  #         mem: 1024
+  #         usesh: true
+  #         run: |
+  #           set -x
+  #           uname -a
+  #           id
+  #           env | LC_ALL=C sort
+  #           pwd
+  #           : "Install FreeBSD packages"
+  #           : "List of packages: https://ports.freebsd.org/cgi/ports.cgi"
+  #           : pkg install -y ...
+  #           : "Do only one build, not 'build' and 'build-full', here, because"
+  #           : "with two builds, this step often takes more than 14 min 45 sec"
+  #           : "and it then hangs."
+  #           pkg install -y json-c curl python311 clisp librep guile3 mono ldc gawk ocaml ocaml-opam tcl86 p5-Locale-libintl php83 go122 ruby lua54 gjs autoconf automake && ln -s python3.11 /usr/local/bin/python3 && ln -s guile-3.0 /usr/local/bin/guile && ln -s tclsh8.6 /usr/local/bin/tclsh && ln -s lua54 /usr/local/bin/lua
+  #           ls -l
+  #           export CPPFLAGS="-I/usr/local/include -Wall"
+  #           export LDFLAGS="-L/usr/local/lib"
+  #           ./build-on.sh '${{ env.package }}' '--with-included-libunistring' 'make' '/usr/local' '' ''
+  #     # Doc: https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
+  #     #      https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
+  #     - if: ${{ always() }}
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: logs-freebsd
+  #         path: |
+  #           ${{ env.package }}-*/build/config.cache
+  #           ${{ env.package }}-*/build/config.log
+  #           ${{ env.package }}-*/build/config.status
+  #           ${{ env.package }}-*/build/log[12345]
+  #           ${{ env.package }}-*/build/gettext-runtime/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/tests/test-suite.log
+  #           ${{ env.package }}-*/build/libtextstyle/config.cache
+  #           ${{ env.package }}-*/build/libtextstyle/config.log
+  #           ${{ env.package }}-*/build/libtextstyle/config.status
+  #           ${{ env.package }}-*/build/libtextstyle/tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/config.cache
+  #           ${{ env.package }}-*/build/gettext-tools/config.log
+  #           ${{ env.package }}-*/build/gettext-tools/config.status
+  #           ${{ env.package }}-*/build/gettext-tools/tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/system-tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/gnulib-tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.cache
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.log
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.status
+  #           ${{ env.package }}-*/build-full/config.cache
+  #           ${{ env.package }}-*/build-full/config.log
+  #           ${{ env.package }}-*/build-full/config.status
+  #           ${{ env.package }}-*/build-full/log[12345]
+  #           ${{ env.package }}-*/build-full/gettext-runtime/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-runtime/config.log
+  #           ${{ env.package }}-*/build-full/gettext-runtime/config.status
+  #           ${{ env.package }}-*/build-full/gettext-runtime/intl/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-runtime/intl/config.log
+  #           ${{ env.package }}-*/build-full/gettext-runtime/intl/config.status
+  #           ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.log
+  #           ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.status
+  #           ${{ env.package }}-*/build-full/gettext-runtime/tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/libtextstyle/config.cache
+  #           ${{ env.package }}-*/build-full/libtextstyle/config.log
+  #           ${{ env.package }}-*/build-full/libtextstyle/config.status
+  #           ${{ env.package }}-*/build-full/libtextstyle/tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-tools/config.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/config.status
+  #           ${{ env.package }}-*/build-full/gettext-tools/tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/system-tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/gnulib-tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/examples/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-tools/examples/config.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/examples/config.status
+  #         retention-days: 28
+  #         overwrite: true
+  # check-netbsd:
+  #   name: make check on NetBSD
+  #   needs: build-tarball
+  #   runs-on: ubuntu-22.04
+  #   steps:
+  #     # This is needed because we run a script stored in this repository.
+  #     - uses: actions/checkout@v4
+  #     # Download the artifact to $GITHUB_WORKSPACE.
+  #     # Doc: https://github.com/actions/download-artifact?tab=readme-ov-file#usage
+  #     - uses: actions/download-artifact@v4
+  #       with:
+  #         name: tarball
+  #     # Doc: https://github.com/vmactions/netbsd-vm
+  #     - uses: vmactions/netbsd-vm@v1
+  #       with:
+  #         release: '10.0'
+  #         mem: 1024
+  #         usesh: true
+  #         run: |
+  #           set -x
+  #           uname -a
+  #           id
+  #           env | LC_ALL=C sort
+  #           pwd
+  #           : "Install NetBSD packages"
+  #           : "List of packages: https://ftp.netbsd.org/pub/pkgsrc/current/pkgsrc/index-all.html"
+  #           : /usr/sbin/pkg_add ...
+  #           : "or"
+  #           : /usr/sbin/pkg_add pkgin
+  #           : pkgin install ...
+  #           ls -l
+  #           export CPPFLAGS="-I/usr/pkg/include -Wall"
+  #           export LDFLAGS="-L/usr/pkg/lib"
+  #           ./build-on.sh '${{ env.package }}' '' 'make' '/usr/pkg' '' '/usr/sbin/pkg_add json-c; /usr/sbin/pkg_add curl; /usr/sbin/pkg_add python312; /usr/sbin/pkg_add clisp; /usr/sbin/pkg_add librep; /usr/sbin/pkg_add guile30; /usr/sbin/pkg_add openjdk21; /usr/sbin/pkg_add mono; /usr/sbin/pkg_add gawk; /usr/sbin/pkg_add ocaml ocaml-opam; /usr/sbin/pkg_add tcl; /usr/sbin/pkg_add p5-Locale-libintl; /usr/sbin/pkg_add php; /usr/sbin/pkg_add go; /usr/sbin/pkg_add ruby ruby32-gettext; /usr/sbin/pkg_add lua54; /usr/sbin/pkg_add vala; /usr/sbin/pkg_add autoconf automake; ln -s python3.12 /usr/pkg/bin/python3 && ln -s ../guile/3.0/bin/guile /usr/pkg/bin/guile && ln -s ../java/openjdk21/bin/java /usr/pkg/bin/java && ln -s ../java/openjdk21/bin/javac /usr/pkg/bin/javac && ln -s ../java/openjdk21/bin/jar /usr/pkg/bin/jar'
+  #     # Doc: https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
+  #     #      https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
+  #     - if: ${{ always() }}
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: logs-netbsd
+  #         path: |
+  #           ${{ env.package }}-*/build/config.cache
+  #           ${{ env.package }}-*/build/config.log
+  #           ${{ env.package }}-*/build/config.status
+  #           ${{ env.package }}-*/build/log[12345]
+  #           ${{ env.package }}-*/build/gettext-runtime/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/tests/test-suite.log
+  #           ${{ env.package }}-*/build/libtextstyle/config.cache
+  #           ${{ env.package }}-*/build/libtextstyle/config.log
+  #           ${{ env.package }}-*/build/libtextstyle/config.status
+  #           ${{ env.package }}-*/build/libtextstyle/tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/config.cache
+  #           ${{ env.package }}-*/build/gettext-tools/config.log
+  #           ${{ env.package }}-*/build/gettext-tools/config.status
+  #           ${{ env.package }}-*/build/gettext-tools/tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/system-tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/gnulib-tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.cache
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.log
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.status
+  #           ${{ env.package }}-*/build-full/config.cache
+  #           ${{ env.package }}-*/build-full/config.log
+  #           ${{ env.package }}-*/build-full/config.status
+  #           ${{ env.package }}-*/build-full/log[12345]
+  #           ${{ env.package }}-*/build-full/gettext-runtime/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-runtime/config.log
+  #           ${{ env.package }}-*/build-full/gettext-runtime/config.status
+  #           ${{ env.package }}-*/build-full/gettext-runtime/intl/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-runtime/intl/config.log
+  #           ${{ env.package }}-*/build-full/gettext-runtime/intl/config.status
+  #           ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.log
+  #           ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.status
+  #           ${{ env.package }}-*/build-full/gettext-runtime/tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/libtextstyle/config.cache
+  #           ${{ env.package }}-*/build-full/libtextstyle/config.log
+  #           ${{ env.package }}-*/build-full/libtextstyle/config.status
+  #           ${{ env.package }}-*/build-full/libtextstyle/tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-tools/config.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/config.status
+  #           ${{ env.package }}-*/build-full/gettext-tools/tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/system-tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/gnulib-tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/examples/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-tools/examples/config.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/examples/config.status
+  #         retention-days: 28
+  #         overwrite: true
+  # check-openbsd:
+  #   name: make check on OpenBSD
+  #   needs: build-tarball
+  #   runs-on: ubuntu-22.04
+  #   steps:
+  #     # This is needed because we run a script stored in this repository.
+  #     - uses: actions/checkout@v4
+  #     # Download the artifact to $GITHUB_WORKSPACE.
+  #     # Doc: https://github.com/actions/download-artifact?tab=readme-ov-file#usage
+  #     - uses: actions/download-artifact@v4
+  #       with:
+  #         name: tarball
+  #     # Doc: https://github.com/vmactions/openbsd-vm
+  #     - uses: vmactions/openbsd-vm@v1
+  #       with:
+  #         release: '7.7'
+  #         mem: 1024
+  #         usesh: true
+  #         # Avoid 'sync: sshfs' since it causes trouble with file timestamps
+  #         # and errors from chown() calls:
+  #         # - BSD tar error messages for r--r--r-- files: "tar: Unable to create ...: Permission denied"
+  #         # - GNU tar warnings "Cannot change ownership to uid 0, gid 0: Permission denied"
+  #         #sync: sshfs
+  #         run: |
+  #           set -x
+  #           uname -a
+  #           id
+  #           env | LC_ALL=C sort
+  #           pwd
+  #           : "Install OpenBSD packages"
+  #           : "List of packages: https://cdn.openbsd.org/pub/OpenBSD/7.7/packages/amd64/"
+  #           pkg_add gmake g++
+  #           export PATH=/usr/local/bin:$PATH
+  #           : "The OpenBSD port of autoconf needs this. See <https://marc.info/?l=openbsd-misc&m=115868167816272&w=2>."
+  #           export AUTOCONF_VERSION=2.72
+  #           : "The OpenBSD port of automake needs this, if more than one version is installed."
+  #           export AUTOMAKE_VERSION=1.16
+  #           ls -l
+  #           export CPPFLAGS="-I/usr/local/include -Wall"
+  #           export LDFLAGS="-L/usr/local/lib"
+  #           ./build-on.sh '${{ env.package }}' '' 'gmake' '/usr/local' '' 'pkg_add json-c curl gobjc-11.2.0p14 python3 clisp librep guile3 dmd gawk ocaml opam tcl-8.6.13 php-8.3.11p1 go-1.23.1 ruby-3.3.5 ruby33-gettext lua-5.4.7 vala autoconf-2.72p0 automake-1.16.5 && ln -s guile3.0 /usr/local/bin/guile && ln -s tclsh8.6 /usr/local/bin/tclsh && ln -s php-8.3 /usr/local/bin/php && ln -s lua54 /usr/local/bin/lua'
+  #     # Doc: https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
+  #     #      https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
+  #     - if: ${{ always() }}
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: logs-openbsd
+  #         path: |
+  #           ${{ env.package }}-*/build/config.cache
+  #           ${{ env.package }}-*/build/config.log
+  #           ${{ env.package }}-*/build/config.status
+  #           ${{ env.package }}-*/build/log[12345]
+  #           ${{ env.package }}-*/build/gettext-runtime/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/tests/test-suite.log
+  #           ${{ env.package }}-*/build/libtextstyle/config.cache
+  #           ${{ env.package }}-*/build/libtextstyle/config.log
+  #           ${{ env.package }}-*/build/libtextstyle/config.status
+  #           ${{ env.package }}-*/build/libtextstyle/tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/config.cache
+  #           ${{ env.package }}-*/build/gettext-tools/config.log
+  #           ${{ env.package }}-*/build/gettext-tools/config.status
+  #           ${{ env.package }}-*/build/gettext-tools/tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/system-tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/gnulib-tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.cache
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.log
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.status
+  #           ${{ env.package }}-*/build-full/config.cache
+  #           ${{ env.package }}-*/build-full/config.log
+  #           ${{ env.package }}-*/build-full/config.status
+  #           ${{ env.package }}-*/build-full/log[12345]
+  #           ${{ env.package }}-*/build-full/gettext-runtime/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-runtime/config.log
+  #           ${{ env.package }}-*/build-full/gettext-runtime/config.status
+  #           ${{ env.package }}-*/build-full/gettext-runtime/intl/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-runtime/intl/config.log
+  #           ${{ env.package }}-*/build-full/gettext-runtime/intl/config.status
+  #           ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.log
+  #           ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.status
+  #           ${{ env.package }}-*/build-full/gettext-runtime/tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/libtextstyle/config.cache
+  #           ${{ env.package }}-*/build-full/libtextstyle/config.log
+  #           ${{ env.package }}-*/build-full/libtextstyle/config.status
+  #           ${{ env.package }}-*/build-full/libtextstyle/tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-tools/config.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/config.status
+  #           ${{ env.package }}-*/build-full/gettext-tools/tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/system-tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/gnulib-tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/examples/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-tools/examples/config.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/examples/config.status
+  #         retention-days: 28
+  #         overwrite: true
+  # check-solaris11:
+  #   name: make check on Solaris 11
+  #   needs: build-tarball
+  #   runs-on: ubuntu-22.04
+  #   steps:
+  #     # This is needed because we run a script stored in this repository.
+  #     - uses: actions/checkout@v4
+  #     # Download the artifact to $GITHUB_WORKSPACE.
+  #     # Doc: https://github.com/actions/download-artifact?tab=readme-ov-file#usage
+  #     - uses: actions/download-artifact@v4
+  #       with:
+  #         name: tarball
+  #     # Doc: https://github.com/vmactions/solaris-vm
+  #     - uses: vmactions/solaris-vm@v1
+  #       with:
+  #         # We can choose among
+  #         # - the '11.4' image and installing gcc from the Oracle packages site, or
+  #         # - the '11.4-gcc' image, that has gcc installed in /opt/csw/bin.
+  #         release: '11.4-gcc'
+  #         mem: 2048
+  #         prepare: |
+  #           : "Install Solaris packages"
+  #           : "List of packages: http://pkg.oracle.com/solaris/release/en/index.shtml"
+  #           pkg install gcc-c++ gnu-make; ret=$?; test $ret = 0 || test $ret = 4
+  #         run: |
+  #           set -x
+  #           uname -a
+  #           id
+  #           env | LC_ALL=C sort
+  #           pwd
+  #           ls -l
+  #           export CPPFLAGS="-Wall"
+  #           export CC="gcc -m64"
+  #           export CXX="g++ -m64"
+  #           ./build-on.sh '${{ env.package }}' '' 'gmake' "$HOME" '' 'pkg install json-c curl gcc-gobjc clisp jdk-8 gawk tcl-8 golang lua gjs vala automake system/locale'
+  #     # Doc: https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
+  #     #      https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
+  #     - if: ${{ always() }}
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: logs-solaris11
+  #         path: |
+  #           ${{ env.package }}-*/build/config.cache
+  #           ${{ env.package }}-*/build/config.log
+  #           ${{ env.package }}-*/build/config.status
+  #           ${{ env.package }}-*/build/log[12345]
+  #           ${{ env.package }}-*/build/gettext-runtime/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/tests/test-suite.log
+  #           ${{ env.package }}-*/build/libtextstyle/config.cache
+  #           ${{ env.package }}-*/build/libtextstyle/config.log
+  #           ${{ env.package }}-*/build/libtextstyle/config.status
+  #           ${{ env.package }}-*/build/libtextstyle/tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/config.cache
+  #           ${{ env.package }}-*/build/gettext-tools/config.log
+  #           ${{ env.package }}-*/build/gettext-tools/config.status
+  #           ${{ env.package }}-*/build/gettext-tools/tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/system-tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/gnulib-tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.cache
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.log
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.status
+  #           ${{ env.package }}-*/build-full/config.cache
+  #           ${{ env.package }}-*/build-full/config.log
+  #           ${{ env.package }}-*/build-full/config.status
+  #           ${{ env.package }}-*/build-full/log[12345]
+  #           ${{ env.package }}-*/build-full/gettext-runtime/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-runtime/config.log
+  #           ${{ env.package }}-*/build-full/gettext-runtime/config.status
+  #           ${{ env.package }}-*/build-full/gettext-runtime/intl/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-runtime/intl/config.log
+  #           ${{ env.package }}-*/build-full/gettext-runtime/intl/config.status
+  #           ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.log
+  #           ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.status
+  #           ${{ env.package }}-*/build-full/gettext-runtime/tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/libtextstyle/config.cache
+  #           ${{ env.package }}-*/build-full/libtextstyle/config.log
+  #           ${{ env.package }}-*/build-full/libtextstyle/config.status
+  #           ${{ env.package }}-*/build-full/libtextstyle/tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-tools/config.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/config.status
+  #           ${{ env.package }}-*/build-full/gettext-tools/tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/system-tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/gnulib-tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/examples/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-tools/examples/config.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/examples/config.status
+  #         retention-days: 28
+  #         overwrite: true
+  # check-solaris11-omnios:
+  #   name: make check on Solaris 11 OmniOS
+  #   needs: build-tarball
+  #   runs-on: ubuntu-22.04
+  #   steps:
+  #     # This is needed because we run a script stored in this repository.
+  #     - uses: actions/checkout@v4
+  #     # Download the artifact to $GITHUB_WORKSPACE.
+  #     # Doc: https://github.com/actions/download-artifact?tab=readme-ov-file#usage
+  #     - uses: actions/download-artifact@v4
+  #       with:
+  #         name: tarball
+  #     # Doc: https://github.com/vmactions/omnios-vm
+  #     - uses: vmactions/omnios-vm@v1
+  #       with:
+  #         release: "r151048"
+  #         mem: 2048
+  #         prepare: |
+  #           : "Install Solaris packages"
+  #           : "List of packages: https://pkg.omnios.org/r151048/core/en/index.shtml"
+  #           pkg install \
+  #               developer/gcc13 developer/object-file system/header system/library/math \
+  #               developer/build/gnu-make \
+  #               system/library/iconv/unicode \
+  #               system/library/g++-runtime
+  #         run: |
+  #           set -x
+  #           uname -a
+  #           id
+  #           env | LC_ALL=C sort
+  #           pwd
+  #           ls -l
+  #           export CPPFLAGS="-Wall"
+  #           ./build-on.sh '${{ env.package }}' '' 'gmake' "$HOME" '' 'pkg install web/curl runtime/python-37 runtime/java/openjdk11 text/gawk runtime/perl developer/build/autoconf developer/build/automake locale/de locale/es locale/fr locale/tr'
+  #     # Doc: https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
+  #     #      https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
+  #     - if: ${{ always() }}
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: logs-solaris11-omnios
+  #         path: |
+  #           ${{ env.package }}-*/build/config.cache
+  #           ${{ env.package }}-*/build/config.log
+  #           ${{ env.package }}-*/build/config.status
+  #           ${{ env.package }}-*/build/log[12345]
+  #           ${{ env.package }}-*/build/gettext-runtime/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/tests/test-suite.log
+  #           ${{ env.package }}-*/build/libtextstyle/config.cache
+  #           ${{ env.package }}-*/build/libtextstyle/config.log
+  #           ${{ env.package }}-*/build/libtextstyle/config.status
+  #           ${{ env.package }}-*/build/libtextstyle/tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/config.cache
+  #           ${{ env.package }}-*/build/gettext-tools/config.log
+  #           ${{ env.package }}-*/build/gettext-tools/config.status
+  #           ${{ env.package }}-*/build/gettext-tools/tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/system-tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/gnulib-tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.cache
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.log
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.status
+  #           ${{ env.package }}-*/build-full/config.cache
+  #           ${{ env.package }}-*/build-full/config.log
+  #           ${{ env.package }}-*/build-full/config.status
+  #           ${{ env.package }}-*/build-full/log[12345]
+  #           ${{ env.package }}-*/build-full/gettext-runtime/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-runtime/config.log
+  #           ${{ env.package }}-*/build-full/gettext-runtime/config.status
+  #           ${{ env.package }}-*/build-full/gettext-runtime/intl/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-runtime/intl/config.log
+  #           ${{ env.package }}-*/build-full/gettext-runtime/intl/config.status
+  #           ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.log
+  #           ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.status
+  #           ${{ env.package }}-*/build-full/gettext-runtime/tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/libtextstyle/config.cache
+  #           ${{ env.package }}-*/build-full/libtextstyle/config.log
+  #           ${{ env.package }}-*/build-full/libtextstyle/config.status
+  #           ${{ env.package }}-*/build-full/libtextstyle/tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-tools/config.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/config.status
+  #           ${{ env.package }}-*/build-full/gettext-tools/tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/system-tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/gnulib-tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/examples/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-tools/examples/config.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/examples/config.status
+  #         retention-days: 28
+  #         overwrite: true
+  # check-cygwin:
+  #   name: make check on Cygwin
+  #   needs: build-tarball
+  #   # Doc: https://docs.github.com/en/actions/using-jobs/using-a-matrix-for-your-jobs
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       bitness: [32, 64]
+  #   runs-on: windows-2022
+  #   defaults:
+  #     run:
+  #       shell: C:\cygwin\bin\bash.exe -eo pipefail -o igncr '{0}'
+  #   env:
+  #     CYGWIN_NOWINPATH: 1
+  #   steps:
+  #     # This is needed because we run a script stored in this repository.
+  #     - run: git config --global core.autocrlf input
+  #       shell: cmd
+  #     - uses: actions/checkout@v4
+  #     # Download the artifact to $GITHUB_WORKSPACE.
+  #     # Doc: https://github.com/actions/download-artifact?tab=readme-ov-file#usage
+  #     - uses: actions/download-artifact@v4
+  #       with:
+  #         name: tarball
+  #     # Doc: https://github.com/cygwin/cygwin-install-action
+  #     - uses: cygwin/cygwin-install-action@v4
+  #       with:
+  #         platform: ${{ matrix.bitness == 32 && 'x86' || 'x86_64' }}
+  #         # Install Cygwin packages.
+  #         # List of packages: https://cygwin.com/packages/package_list.html
+  #         packages: gcc-core gcc-g++ make libiconv-devel libjson-c-devel libcurl-devel ocaml opam
+  #     - name: cygcheck
+  #       run: cygcheck -V
+  #     - name: cygcheck
+  #       run: cygcheck -s -r
+  #     - name: Windows version
+  #       run: cmd /c ver
+  #     - run: uname -a
+  #     - run: id
+  #     - run: env | LC_ALL=C sort
+  #     - run: pwd
+  #     - run: ls -l
+  #     - run: echo "$PATH"
+  #     - run: ls -l /usr/bin
+  #     - run: type java || true
+  #     - run: type tclsh || true
+  #     # Avoid errors such as
+  #     # child_info_fork::abort: \??\C:\cygwin\bin\cygiconv-2.dll: Loaded to different address: parent(0xEE0000) != child(0x820000)
+  #     # Cf. https://stackoverflow.com/questions/9300722/
+  #     - if: ${{ matrix.bitness == 32 }}
+  #       run: /usr/bin/rebaseall
+  #     - name: Build in Cygwin
+  #       run: |
+  #         : "Set a PATH without native Windows implementations like java and tclsh."
+  #         export PATH="/usr/bin:/cygdrive/c/Windows/system32:/cygdrive/c/Windows"
+  #         export CPPFLAGS="-Wall"
+  #         ./build-on.sh '${{ env.package }}' '${{ matrix.bitness == 32 && '--disable-shared' || '' }} --enable-csharp=dotnet' 'make' '/usr' '' ''
+  #     # Doc: https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
+  #     #      https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
+  #     - if: ${{ always() }}
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: logs-cygwin${{ matrix.bitness }}
+  #         path: |
+  #           ${{ env.package }}-*/build/config.cache
+  #           ${{ env.package }}-*/build/config.log
+  #           ${{ env.package }}-*/build/config.status
+  #           ${{ env.package }}-*/build/log[12345]
+  #           ${{ env.package }}-*/build/gettext-runtime/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/tests/test-suite.log
+  #           ${{ env.package }}-*/build/libtextstyle/config.cache
+  #           ${{ env.package }}-*/build/libtextstyle/config.log
+  #           ${{ env.package }}-*/build/libtextstyle/config.status
+  #           ${{ env.package }}-*/build/libtextstyle/tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/config.cache
+  #           ${{ env.package }}-*/build/gettext-tools/config.log
+  #           ${{ env.package }}-*/build/gettext-tools/config.status
+  #           ${{ env.package }}-*/build/gettext-tools/tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/system-tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/gnulib-tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.cache
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.log
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.status
+  #         retention-days: 28
+  #         overwrite: true
+  # check-mingw:
+  #   name: make check on mingw
+  #   needs: build-tarball
+  #   # Doc: https://docs.github.com/en/actions/using-jobs/using-a-matrix-for-your-jobs
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       bitness: [32, 64]
+  #   runs-on: windows-2022
+  #   defaults:
+  #     run:
+  #       shell: C:\cygwin\bin\bash.exe -eo pipefail -o igncr '{0}'
+  #   env:
+  #     CYGWIN_NOWINPATH: 1
+  #   steps:
+  #     # This is needed because we run a script stored in this repository.
+  #     - run: git config --global core.autocrlf input
+  #       shell: cmd
+  #     - uses: actions/checkout@v4
+  #     # Download the artifact to $GITHUB_WORKSPACE.
+  #     # Doc: https://github.com/actions/download-artifact?tab=readme-ov-file#usage
+  #     - uses: actions/download-artifact@v4
+  #       with:
+  #         name: tarball
+  #     # Doc: https://github.com/cygwin/cygwin-install-action
+  #     - uses: cygwin/cygwin-install-action@v4
+  #       with:
+  #         platform: x86_64
+  #         # Install Cygwin packages.
+  #         # List of packages: https://cygwin.com/packages/package_list.html
+  #         packages: wget ${{ matrix.bitness == 32 && 'mingw64-i686-gcc-core mingw64-i686-gcc-g++ mingw64-i686-headers mingw64-i686-runtime mingw64-i686-curl' || 'mingw64-x86_64-gcc-core mingw64-x86_64-gcc-g++ mingw64-x86_64-headers mingw64-x86_64-runtime mingw64-x86_64-curl' }} make
+  #     - name: cygcheck
+  #       run: cygcheck -V
+  #     - name: cygcheck
+  #       run: cygcheck -s -r
+  #     - name: Windows version
+  #       run: cmd /c ver
+  #     - run: uname -a
+  #     - run: id
+  #     - run: env | LC_ALL=C sort
+  #     - run: pwd
+  #     - run: ls -l
+  #     - run: echo "$PATH"
+  #     - run: ls -l /usr/bin
+  #     - name: Build in Cygwin
+  #       run: |
+  #         set -x
+  #         PATH=/usr/${{ matrix.bitness == 32 && 'i686' || 'x86_64' }}-w64-mingw32/sys-root/mingw/bin:$PATH
+  #         export CPPFLAGS="-Wall"
+  #         export CC=${{ matrix.bitness == 32 && 'i686' || 'x86_64' }}-w64-mingw32-gcc
+  #         export CXX=${{ matrix.bitness == 32 && 'i686' || 'x86_64' }}-w64-mingw32-g++
+  #         wget -O libiconv-1.18.tar.gz https://${{ env.ftp_gnu_org }}/gnu/libiconv/libiconv-1.18.tar.gz
+  #         ./build-on.sh '${{ env.package }}' '--host=${{ matrix.bitness == 32 && 'i686' || 'x86_64' }}-w64-mingw32 --enable-csharp=dotnet' 'make' '/usr/${{ matrix.bitness == 32 && 'i686' || 'x86_64' }}-w64-mingw32/sys-root/mingw' 'libiconv-1.18' ''
+  #     # Doc: https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
+  #     #      https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
+  #     - if: ${{ always() }}
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: logs-mingw${{ matrix.bitness }}
+  #         path: |
+  #           ${{ env.package }}-*/build/config.cache
+  #           ${{ env.package }}-*/build/config.log
+  #           ${{ env.package }}-*/build/config.status
+  #           ${{ env.package }}-*/build/log[12345]
+  #           ${{ env.package }}-*/build/gettext-runtime/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/tests/test-suite.log
+  #           ${{ env.package }}-*/build/libtextstyle/config.cache
+  #           ${{ env.package }}-*/build/libtextstyle/config.log
+  #           ${{ env.package }}-*/build/libtextstyle/config.status
+  #           ${{ env.package }}-*/build/libtextstyle/tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/config.cache
+  #           ${{ env.package }}-*/build/gettext-tools/config.log
+  #           ${{ env.package }}-*/build/gettext-tools/config.status
+  #           ${{ env.package }}-*/build/gettext-tools/tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/system-tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/gnulib-tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.cache
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.log
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.status
+  #         retention-days: 28
+  #         overwrite: true
   check-msvc:
     name: make check on MSVC
     needs: build-tarball
@@ -1359,220 +1378,220 @@ jobs:
           retention-days: 28
           overwrite: true
   # This is not a platform-specific test, but very useful for finding bugs.
-  check-sanitized:
-    name: make check with sanitizers
-    needs: build-tarball
-    runs-on: ubuntu-22.04
-    steps:
-      # This is needed because we run a script stored in this repository.
-      - uses: actions/checkout@v4
-      # Download the artifact to $GITHUB_WORKSPACE.
-      # Doc: https://github.com/actions/download-artifact?tab=readme-ov-file#usage
-      - uses: actions/download-artifact@v4
-        with:
-          name: tarball
-      - run: uname -a
-      - run: id
-      - run: env | LC_ALL=C sort
-      - run: pwd
-      # Install Ubuntu packages.
-      # List of packages: https://packages.ubuntu.com/
-      # - run: sudo apt update; sudo apt install ...
-      - run: |
-          pwd
-          export CPPFLAGS="-Wall"
-          export CC="clang -fsanitize=address,undefined,signed-integer-overflow,shift,integer-divide-by-zero -fno-sanitize-recover=undefined"
-          export CFLAGS="-O0 -fno-omit-frame-pointer -ggdb"
-          export CXX="clang++ -fsanitize=address,undefined,signed-integer-overflow,shift,integer-divide-by-zero -fno-sanitize-recover=undefined"
-          export CXXFLAGS="-O0 -fno-omit-frame-pointer -ggdb"
-          export ASAN_OPTIONS="detect_leaks=0 abort_on_error=1 allocator_may_return_null=1"
-          ./build-on.sh '${{ env.package }}' '' 'make' "$HOME" '' ''
-      # Doc: https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
-      #      https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
-      - if: ${{ always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: logs-sanitized
-          path: |
-            ${{ env.package }}-*/build/config.cache
-            ${{ env.package }}-*/build/config.log
-            ${{ env.package }}-*/build/config.status
-            ${{ env.package }}-*/build/log[12345]
-            ${{ env.package }}-*/build/gettext-runtime/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/config.log
-            ${{ env.package }}-*/build/gettext-runtime/config.status
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.log
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.status
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.log
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.status
-            ${{ env.package }}-*/build/gettext-runtime/tests/test-suite.log
-            ${{ env.package }}-*/build/libtextstyle/config.cache
-            ${{ env.package }}-*/build/libtextstyle/config.log
-            ${{ env.package }}-*/build/libtextstyle/config.status
-            ${{ env.package }}-*/build/libtextstyle/tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/config.cache
-            ${{ env.package }}-*/build/gettext-tools/config.log
-            ${{ env.package }}-*/build/gettext-tools/config.status
-            ${{ env.package }}-*/build/gettext-tools/tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/system-tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/gnulib-tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/examples/config.cache
-            ${{ env.package }}-*/build/gettext-tools/examples/config.log
-            ${{ env.package }}-*/build/gettext-tools/examples/config.status
-          retention-days: 28
-          overwrite: true
-  # This is not a platform-specific test, but very useful for finding ISO C23 compliance bugs.
-  check-newest-clang:
-    name: make check with the newest clang release
-    needs: build-tarball
-    runs-on: ubuntu-22.04
-    steps:
-      # This is needed because we run a script stored in this repository.
-      - uses: actions/checkout@v4
-      # Download the artifact to $GITHUB_WORKSPACE.
-      # Doc: https://github.com/actions/download-artifact?tab=readme-ov-file#usage
-      - uses: actions/download-artifact@v4
-        with:
-          name: tarball
-      - uses: maus007/docker-run-action-fork@v1
-        with:
-          # A Docker container with the newest clang release, based on Debian 13.
-          image: tuxmake/clang-21:latest
-          options: -v ${{ github.workspace }}:/work
-          run: |
-            uname -a
-            cat /etc/os-release
-            id
-            env | LC_ALL=C sort
-            pwd
-            : "Install Debian packages."
-            : "List of packages: https://packages.debian.org/"
-            : "apt update; apt -y install ..."
-            cd /work
-            ls -l
-            export CPPFLAGS="-Wall"
-            export CC=clang
-            export CXX=clang++
-            ./build-on.sh '${{ env.package }}' '' 'make' '/usr/local' '' 'apt update; apt -y install locales && localedef -i ar_SA -f ISO-8859-6 ar_SA.ISO-8859-6 && localedef -i de_DE -f ISO-8859-1 de_DE.ISO-8859-1 && localedef -i de_DE -f UTF-8 de_DE.UTF-8 && localedef -i es_ES -f UTF-8 es_ES.UTF-8 && localedef -i fa_IR -f UTF-8 fa_IR && localedef -i fr_FR -f ISO-8859-1 fr_FR.ISO-8859-1 && localedef -i fr_FR -f UTF-8 fr_FR.UTF-8 && localedef -i ja_JP -f EUC-JP ja_JP.EUC-JP && localedef -i tr_TR -f UTF-8 tr_TR.UTF-8 && localedef -i zh_CN -f GB18030 zh_CN.GB18030'
-      # Doc: https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
-      #      https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
-      - if: ${{ always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: logs-newest-clang
-          path: |
-            ${{ env.package }}-*/build/config.cache
-            ${{ env.package }}-*/build/config.log
-            ${{ env.package }}-*/build/config.status
-            ${{ env.package }}-*/build/log[12345]
-            ${{ env.package }}-*/build/gettext-runtime/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/config.log
-            ${{ env.package }}-*/build/gettext-runtime/config.status
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.log
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.status
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.log
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.status
-            ${{ env.package }}-*/build/gettext-runtime/tests/test-suite.log
-            ${{ env.package }}-*/build/libtextstyle/config.cache
-            ${{ env.package }}-*/build/libtextstyle/config.log
-            ${{ env.package }}-*/build/libtextstyle/config.status
-            ${{ env.package }}-*/build/libtextstyle/tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/config.cache
-            ${{ env.package }}-*/build/gettext-tools/config.log
-            ${{ env.package }}-*/build/gettext-tools/config.status
-            ${{ env.package }}-*/build/gettext-tools/tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/system-tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/gnulib-tests/test-suite.log
-            ${{ env.package }}-*/build/gettext-tools/examples/config.cache
-            ${{ env.package }}-*/build/gettext-tools/examples/config.log
-            ${{ env.package }}-*/build/gettext-tools/examples/config.status
-            ${{ env.package }}-*/build-full/config.cache
-            ${{ env.package }}-*/build-full/config.log
-            ${{ env.package }}-*/build-full/config.status
-            ${{ env.package }}-*/build-full/log[12345]
-            ${{ env.package }}-*/build-full/gettext-runtime/config.cache
-            ${{ env.package }}-*/build-full/gettext-runtime/config.log
-            ${{ env.package }}-*/build-full/gettext-runtime/config.status
-            ${{ env.package }}-*/build-full/gettext-runtime/intl/config.cache
-            ${{ env.package }}-*/build-full/gettext-runtime/intl/config.log
-            ${{ env.package }}-*/build-full/gettext-runtime/intl/config.status
-            ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.cache
-            ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.log
-            ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.status
-            ${{ env.package }}-*/build-full/gettext-runtime/tests/test-suite.log
-            ${{ env.package }}-*/build-full/libtextstyle/config.cache
-            ${{ env.package }}-*/build-full/libtextstyle/config.log
-            ${{ env.package }}-*/build-full/libtextstyle/config.status
-            ${{ env.package }}-*/build-full/libtextstyle/tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/config.cache
-            ${{ env.package }}-*/build-full/gettext-tools/config.log
-            ${{ env.package }}-*/build-full/gettext-tools/config.status
-            ${{ env.package }}-*/build-full/gettext-tools/tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/system-tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/gnulib-tests/test-suite.log
-            ${{ env.package }}-*/build-full/gettext-tools/examples/config.cache
-            ${{ env.package }}-*/build-full/gettext-tools/examples/config.log
-            ${{ env.package }}-*/build-full/gettext-tools/examples/config.status
-          retention-days: 28
-          overwrite: true
-  # This is not a platform-specific test, but very useful for finding cross-compilation bugs.
-  check-cross:
-    name: make check with a cross-compiler
-    needs: build-tarball
-    runs-on: ubuntu-22.04
-    steps:
-      # This is needed because we run a script stored in this repository.
-      - uses: actions/checkout@v4
-      # Download the artifact to $GITHUB_WORKSPACE.
-      # Doc: https://github.com/actions/download-artifact?tab=readme-ov-file#usage
-      - uses: actions/download-artifact@v4
-        with:
-          name: tarball
-      - run: uname -a
-      - run: id
-      - run: env | LC_ALL=C sort
-      - run: pwd
-      # Install Ubuntu packages.
-      # List of packages: https://packages.ubuntu.com/
-      - run: sudo apt update; sudo apt install g++-riscv64-linux-gnu
-      - run: |
-          pwd
-          export CPPFLAGS="-Wall"
-          export CC="riscv64-linux-gnu-gcc"
-          export CXX="riscv64-linux-gnu-g++"
-          ./build-on.sh '${{ env.package }}' '--host=riscv64-linux-gnu' 'make' "$HOME" '' ''
-      # Doc: https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
-      #      https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
-      - if: ${{ always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: logs-cross
-          path: |
-            ${{ env.package }}-*/build/config.cache
-            ${{ env.package }}-*/build/config.log
-            ${{ env.package }}-*/build/config.status
-            ${{ env.package }}-*/build/log[12]
-            ${{ env.package }}-*/build/gettext-runtime/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/config.log
-            ${{ env.package }}-*/build/gettext-runtime/config.status
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.log
-            ${{ env.package }}-*/build/gettext-runtime/intl/config.status
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.cache
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.log
-            ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.status
-            ${{ env.package }}-*/build/libtextstyle/config.cache
-            ${{ env.package }}-*/build/libtextstyle/config.log
-            ${{ env.package }}-*/build/libtextstyle/config.status
-            ${{ env.package }}-*/build/gettext-tools/config.cache
-            ${{ env.package }}-*/build/gettext-tools/config.log
-            ${{ env.package }}-*/build/gettext-tools/config.status
-            ${{ env.package }}-*/build/gettext-tools/examples/config.cache
-            ${{ env.package }}-*/build/gettext-tools/examples/config.log
-            ${{ env.package }}-*/build/gettext-tools/examples/config.status
-          retention-days: 28
-          overwrite: true
+  # check-sanitized:
+  #   name: make check with sanitizers
+  #   needs: build-tarball
+  #   runs-on: ubuntu-22.04
+  #   steps:
+  #     # This is needed because we run a script stored in this repository.
+  #     - uses: actions/checkout@v4
+  #     # Download the artifact to $GITHUB_WORKSPACE.
+  #     # Doc: https://github.com/actions/download-artifact?tab=readme-ov-file#usage
+  #     - uses: actions/download-artifact@v4
+  #       with:
+  #         name: tarball
+  #     - run: uname -a
+  #     - run: id
+  #     - run: env | LC_ALL=C sort
+  #     - run: pwd
+  #     # Install Ubuntu packages.
+  #     # List of packages: https://packages.ubuntu.com/
+  #     # - run: sudo apt update; sudo apt install ...
+  #     - run: |
+  #         pwd
+  #         export CPPFLAGS="-Wall"
+  #         export CC="clang -fsanitize=address,undefined,signed-integer-overflow,shift,integer-divide-by-zero -fno-sanitize-recover=undefined"
+  #         export CFLAGS="-O0 -fno-omit-frame-pointer -ggdb"
+  #         export CXX="clang++ -fsanitize=address,undefined,signed-integer-overflow,shift,integer-divide-by-zero -fno-sanitize-recover=undefined"
+  #         export CXXFLAGS="-O0 -fno-omit-frame-pointer -ggdb"
+  #         export ASAN_OPTIONS="detect_leaks=0 abort_on_error=1 allocator_may_return_null=1"
+  #         ./build-on.sh '${{ env.package }}' '' 'make' "$HOME" '' ''
+  #     # Doc: https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
+  #     #      https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
+  #     - if: ${{ always() }}
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: logs-sanitized
+  #         path: |
+  #           ${{ env.package }}-*/build/config.cache
+  #           ${{ env.package }}-*/build/config.log
+  #           ${{ env.package }}-*/build/config.status
+  #           ${{ env.package }}-*/build/log[12345]
+  #           ${{ env.package }}-*/build/gettext-runtime/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/tests/test-suite.log
+  #           ${{ env.package }}-*/build/libtextstyle/config.cache
+  #           ${{ env.package }}-*/build/libtextstyle/config.log
+  #           ${{ env.package }}-*/build/libtextstyle/config.status
+  #           ${{ env.package }}-*/build/libtextstyle/tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/config.cache
+  #           ${{ env.package }}-*/build/gettext-tools/config.log
+  #           ${{ env.package }}-*/build/gettext-tools/config.status
+  #           ${{ env.package }}-*/build/gettext-tools/tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/system-tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/gnulib-tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.cache
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.log
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.status
+  #         retention-days: 28
+  #         overwrite: true
+  # # This is not a platform-specific test, but very useful for finding ISO C23 compliance bugs.
+  # check-newest-clang:
+  #   name: make check with the newest clang release
+  #   needs: build-tarball
+  #   runs-on: ubuntu-22.04
+  #   steps:
+  #     # This is needed because we run a script stored in this repository.
+  #     - uses: actions/checkout@v4
+  #     # Download the artifact to $GITHUB_WORKSPACE.
+  #     # Doc: https://github.com/actions/download-artifact?tab=readme-ov-file#usage
+  #     - uses: actions/download-artifact@v4
+  #       with:
+  #         name: tarball
+  #     - uses: maus007/docker-run-action-fork@v1
+  #       with:
+  #         # A Docker container with the newest clang release, based on Debian 13.
+  #         image: tuxmake/clang-21:latest
+  #         options: -v ${{ github.workspace }}:/work
+  #         run: |
+  #           uname -a
+  #           cat /etc/os-release
+  #           id
+  #           env | LC_ALL=C sort
+  #           pwd
+  #           : "Install Debian packages."
+  #           : "List of packages: https://packages.debian.org/"
+  #           : "apt update; apt -y install ..."
+  #           cd /work
+  #           ls -l
+  #           export CPPFLAGS="-Wall"
+  #           export CC=clang
+  #           export CXX=clang++
+  #           ./build-on.sh '${{ env.package }}' '' 'make' '/usr/local' '' 'apt update; apt -y install locales && localedef -i ar_SA -f ISO-8859-6 ar_SA.ISO-8859-6 && localedef -i de_DE -f ISO-8859-1 de_DE.ISO-8859-1 && localedef -i de_DE -f UTF-8 de_DE.UTF-8 && localedef -i es_ES -f UTF-8 es_ES.UTF-8 && localedef -i fa_IR -f UTF-8 fa_IR && localedef -i fr_FR -f ISO-8859-1 fr_FR.ISO-8859-1 && localedef -i fr_FR -f UTF-8 fr_FR.UTF-8 && localedef -i ja_JP -f EUC-JP ja_JP.EUC-JP && localedef -i tr_TR -f UTF-8 tr_TR.UTF-8 && localedef -i zh_CN -f GB18030 zh_CN.GB18030'
+  #     # Doc: https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
+  #     #      https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
+  #     - if: ${{ always() }}
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: logs-newest-clang
+  #         path: |
+  #           ${{ env.package }}-*/build/config.cache
+  #           ${{ env.package }}-*/build/config.log
+  #           ${{ env.package }}-*/build/config.status
+  #           ${{ env.package }}-*/build/log[12345]
+  #           ${{ env.package }}-*/build/gettext-runtime/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/tests/test-suite.log
+  #           ${{ env.package }}-*/build/libtextstyle/config.cache
+  #           ${{ env.package }}-*/build/libtextstyle/config.log
+  #           ${{ env.package }}-*/build/libtextstyle/config.status
+  #           ${{ env.package }}-*/build/libtextstyle/tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/config.cache
+  #           ${{ env.package }}-*/build/gettext-tools/config.log
+  #           ${{ env.package }}-*/build/gettext-tools/config.status
+  #           ${{ env.package }}-*/build/gettext-tools/tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/system-tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/gnulib-tests/test-suite.log
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.cache
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.log
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.status
+  #           ${{ env.package }}-*/build-full/config.cache
+  #           ${{ env.package }}-*/build-full/config.log
+  #           ${{ env.package }}-*/build-full/config.status
+  #           ${{ env.package }}-*/build-full/log[12345]
+  #           ${{ env.package }}-*/build-full/gettext-runtime/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-runtime/config.log
+  #           ${{ env.package }}-*/build-full/gettext-runtime/config.status
+  #           ${{ env.package }}-*/build-full/gettext-runtime/intl/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-runtime/intl/config.log
+  #           ${{ env.package }}-*/build-full/gettext-runtime/intl/config.status
+  #           ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.log
+  #           ${{ env.package }}-*/build-full/gettext-runtime/libasprintf/config.status
+  #           ${{ env.package }}-*/build-full/gettext-runtime/tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/libtextstyle/config.cache
+  #           ${{ env.package }}-*/build-full/libtextstyle/config.log
+  #           ${{ env.package }}-*/build-full/libtextstyle/config.status
+  #           ${{ env.package }}-*/build-full/libtextstyle/tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-tools/config.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/config.status
+  #           ${{ env.package }}-*/build-full/gettext-tools/tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/system-tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/gnulib-tests/test-suite.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/examples/config.cache
+  #           ${{ env.package }}-*/build-full/gettext-tools/examples/config.log
+  #           ${{ env.package }}-*/build-full/gettext-tools/examples/config.status
+  #         retention-days: 28
+  #         overwrite: true
+  # # This is not a platform-specific test, but very useful for finding cross-compilation bugs.
+  # check-cross:
+  #   name: make check with a cross-compiler
+  #   needs: build-tarball
+  #   runs-on: ubuntu-22.04
+  #   steps:
+  #     # This is needed because we run a script stored in this repository.
+  #     - uses: actions/checkout@v4
+  #     # Download the artifact to $GITHUB_WORKSPACE.
+  #     # Doc: https://github.com/actions/download-artifact?tab=readme-ov-file#usage
+  #     - uses: actions/download-artifact@v4
+  #       with:
+  #         name: tarball
+  #     - run: uname -a
+  #     - run: id
+  #     - run: env | LC_ALL=C sort
+  #     - run: pwd
+  #     # Install Ubuntu packages.
+  #     # List of packages: https://packages.ubuntu.com/
+  #     - run: sudo apt update; sudo apt install g++-riscv64-linux-gnu
+  #     - run: |
+  #         pwd
+  #         export CPPFLAGS="-Wall"
+  #         export CC="riscv64-linux-gnu-gcc"
+  #         export CXX="riscv64-linux-gnu-g++"
+  #         ./build-on.sh '${{ env.package }}' '--host=riscv64-linux-gnu' 'make' "$HOME" '' ''
+  #     # Doc: https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
+  #     #      https://github.com/actions/upload-artifact?tab=readme-ov-file#usage
+  #     - if: ${{ always() }}
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: logs-cross
+  #         path: |
+  #           ${{ env.package }}-*/build/config.cache
+  #           ${{ env.package }}-*/build/config.log
+  #           ${{ env.package }}-*/build/config.status
+  #           ${{ env.package }}-*/build/log[12]
+  #           ${{ env.package }}-*/build/gettext-runtime/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/intl/config.status
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.cache
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.log
+  #           ${{ env.package }}-*/build/gettext-runtime/libasprintf/config.status
+  #           ${{ env.package }}-*/build/libtextstyle/config.cache
+  #           ${{ env.package }}-*/build/libtextstyle/config.log
+  #           ${{ env.package }}-*/build/libtextstyle/config.status
+  #           ${{ env.package }}-*/build/gettext-tools/config.cache
+  #           ${{ env.package }}-*/build/gettext-tools/config.log
+  #           ${{ env.package }}-*/build/gettext-tools/config.status
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.cache
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.log
+  #           ${{ env.package }}-*/build/gettext-tools/examples/config.status
+  #         retention-days: 28
+  #         overwrite: true
